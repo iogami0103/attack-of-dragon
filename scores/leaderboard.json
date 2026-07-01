@@ -2,6 +2,13 @@
   "title": "Attack of Dragon",
   "scores": [
     {
+      "name": "Dragon72993001",
+      "score": 5332,
+      "kills": 184,
+      "date": "2026-07-01T19:54:42.097Z",
+      "version": "1.0.0"
+    },
+    {
       "name": "SkyRider",
       "score": 1840,
       "kills": 23,
