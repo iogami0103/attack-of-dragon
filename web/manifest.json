@@ -1,6 +1,6 @@
 {
-    "name": "shingeki_dragon",
-    "short_name": "shingeki_dragon",
+    "name": "Attack of Dragon",
+    "short_name": "Attack Dragon",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

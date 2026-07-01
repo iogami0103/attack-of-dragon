@@ -1,4 +1,4 @@
-name = "shingeki-dragon-score-submit"
+name = "attack-of-dragon-score-submit"
 main = "worker.js"
 compatibility_date = "2026-07-01"
 

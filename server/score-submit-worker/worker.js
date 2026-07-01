@@ -113,7 +113,7 @@ async function githubFetch(env, method, body) {
       accept: 'application/vnd.github+json',
       authorization: `Bearer ${env.GITHUB_TOKEN}`,
       'content-type': 'application/json',
-      'user-agent': 'shingeki-dragon-score-submit-worker',
+      'user-agent': 'attack-of-dragon-score-submit-worker',
       'x-github-api-version': '2022-11-28',
     },
     body: body == null ? undefined : JSON.stringify(body),
