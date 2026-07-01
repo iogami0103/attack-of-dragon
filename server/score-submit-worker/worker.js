@@ -51,7 +51,7 @@ async function submitScore(entry, env) {
   const scores = [...leaderboard.scores, entry]
     .sort((a, b) => b.score - a.score)
     .slice(0, MAX_LEADERBOARD_ENTRIES);
-  const nextText = `${JSON.stringify({ scores }, null, 2)}\n`;
+  const nextText = `${JSON.stringify({ ...leaderboard.meta, scores }, null, 2)}\n`;
 
   await writeLeaderboardFile(nextText, file.sha, env);
 
@@ -126,7 +126,13 @@ function parseLeaderboard(text) {
   if (!Array.isArray(rawScores)) {
     throw httpError(500, 'invalid_leaderboard_json');
   }
+  const meta = value && !Array.isArray(value) && typeof value === 'object'
+    ? Object.fromEntries(
+        Object.entries(value).filter(([key]) => key !== 'scores'),
+      )
+    : { title: 'Attack of Dragon' };
   return {
+    meta,
     scores: rawScores
       .map(sanitizeScoreEntry)
       .sort((a, b) => b.score - a.score)
