@@ -404,12 +404,14 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late final TextEditingController _nameController;
+  late final String _emptyNameFallback;
   late AppSettings _draft;
 
   @override
   void initState() {
     super.initState();
     _draft = widget.settings;
+    _emptyNameFallback = AppSettings.emptyNameFallback(_draft.playerName);
     _nameController = TextEditingController(text: _draft.playerName);
   }
 
@@ -421,7 +423,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _commit(AppSettings settings) {
     setState(() => _draft = settings);
-    widget.onChanged(settings);
+    widget.onChanged(_settingsForSave(settings));
+  }
+
+  AppSettings _settingsForSave(AppSettings settings) {
+    if (settings.playerName.isNotEmpty) return settings;
+    return settings.copyWith(playerName: _emptyNameFallback);
+  }
+
+  void _backToTitle() {
+    widget.onChanged(_settingsForSave(_draft));
+    unawaited(widget.audio.playSfx('ui_cancel.ogg'));
+    widget.onBack();
   }
 
   @override
@@ -451,9 +464,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           TextField(
                             controller: _nameController,
                             maxLength: AppSettings.maxPlayerNameLength,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'プレイヤー名',
                               counterText: '',
+                              hintText: _emptyNameFallback,
+                              hintStyle: const TextStyle(color: Colors.black38),
                             ),
                             onChanged: (value) {
                               final clean = AppSettings.cleanName(value);
@@ -477,10 +492,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           const SizedBox(height: 10),
                           FilledButton.icon(
-                            onPressed: () {
-                              unawaited(widget.audio.playSfx('ui_cancel.ogg'));
-                              widget.onBack();
-                            },
+                            onPressed: _backToTitle,
                             icon: const Icon(Icons.arrow_back_rounded),
                             label: const Text('タイトルへ戻る'),
                           ),
@@ -1907,6 +1919,7 @@ class AppSettings {
 
   static const int maxPlayerNameLength = 14;
   static const String fallbackPlayerName = 'Player';
+  static final RegExp _generatedDefaultNamePattern = RegExp(r'^Player\d{8}$');
 
   final String playerName;
   final double volume;
@@ -1929,6 +1942,12 @@ class AppSettings {
     final random = math.Random();
     final digits = List.generate(8, (_) => random.nextInt(10)).join();
     return 'Player$digits';
+  }
+
+  static String emptyNameFallback(String currentName) {
+    final clean = cleanName(currentName);
+    if (_generatedDefaultNamePattern.hasMatch(clean)) return clean;
+    return randomDefaultPlayerName();
   }
 
   static String cleanName(String value) {
