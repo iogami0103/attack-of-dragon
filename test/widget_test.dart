@@ -4,10 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shingeki_dragon/main.dart';
 
 void main() {
-  test('default player name is Player plus eight digits', () {
+  test('default player name is Dragon plus eight digits', () {
     final name = AppSettings.randomDefaultPlayerName();
 
-    expect(name, matches(RegExp(r'^Player\d{8}$')));
+    expect(name, matches(RegExp(r'^Dragon\d{8}$')));
     expect(name.length, AppSettings.maxPlayerNameLength);
   });
 
@@ -17,11 +17,23 @@ void main() {
   });
 
   test('emptyNameFallback keeps or creates a generated player name', () {
-    expect(AppSettings.emptyNameFallback('Player12345678'), 'Player12345678');
+    expect(AppSettings.emptyNameFallback('Dragon12345678'), 'Dragon12345678');
+    expect(AppSettings.emptyNameFallback('Player12345678'), 'Dragon12345678');
 
     final fallback = AppSettings.emptyNameFallback('CustomName');
-    expect(fallback, matches(RegExp(r'^Player\d{8}$')));
+    expect(fallback, matches(RegExp(r'^Dragon\d{8}$')));
     expect(fallback.length, AppSettings.maxPlayerNameLength);
+  });
+
+  test('fromPrefs migrates legacy generated player names', () async {
+    SharedPreferences.setMockInitialValues({
+      'playerName': 'Player87654321',
+      'volume': 0.7,
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+
+    expect(AppSettings.fromPrefs(prefs).playerName, 'Dragon87654321');
   });
 
   testWidgets('shows title menu actions', (WidgetTester tester) async {
@@ -44,7 +56,7 @@ void main() {
     WidgetTester tester,
   ) async {
     SharedPreferences.setMockInitialValues({
-      'playerName': 'Player12345678',
+      'playerName': 'Dragon12345678',
       'volume': 0.7,
     });
     tester.view
@@ -61,7 +73,7 @@ void main() {
     final nameField = find.byType(TextField);
     expect(
       tester.widget<TextField>(nameField).decoration?.hintText,
-      'Player12345678',
+      'Dragon12345678',
     );
 
     await tester.enterText(nameField, '');
@@ -69,12 +81,12 @@ void main() {
 
     final clearedField = tester.widget<TextField>(nameField);
     expect(clearedField.controller?.text, '');
-    expect(clearedField.decoration?.hintText, 'Player12345678');
+    expect(clearedField.decoration?.hintText, 'Dragon12345678');
 
     await tester.tap(find.text('タイトルへ戻る'));
     await tester.pumpAndSettle();
 
     final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString('playerName'), 'Player12345678');
+    expect(prefs.getString('playerName'), 'Dragon12345678');
   });
 }

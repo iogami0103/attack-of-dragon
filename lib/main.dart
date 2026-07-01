@@ -1918,8 +1918,11 @@ class AppSettings {
   const AppSettings({required this.playerName, required this.volume});
 
   static const int maxPlayerNameLength = 14;
-  static const String fallbackPlayerName = 'Player';
-  static final RegExp _generatedDefaultNamePattern = RegExp(r'^Player\d{8}$');
+  static const String fallbackPlayerName = 'Dragon';
+  static final RegExp _generatedDefaultNamePattern = RegExp(r'^Dragon(\d{8})$');
+  static final RegExp _legacyGeneratedDefaultNamePattern = RegExp(
+    r'^Player(\d{8})$',
+  );
 
   final String playerName;
   final double volume;
@@ -1933,7 +1936,7 @@ class AppSettings {
     return AppSettings(
       playerName: storedName == null
           ? randomDefaultPlayerName()
-          : cleanName(storedName),
+          : normalizeGeneratedPlayerName(storedName),
       volume: (prefs.getDouble('volume') ?? 0.75).clamp(0.0, 1.0),
     );
   }
@@ -1941,11 +1944,18 @@ class AppSettings {
   static String randomDefaultPlayerName() {
     final random = math.Random();
     final digits = List.generate(8, (_) => random.nextInt(10)).join();
-    return 'Player$digits';
+    return 'Dragon$digits';
+  }
+
+  static String normalizeGeneratedPlayerName(String value) {
+    final clean = cleanName(value);
+    final legacyMatch = _legacyGeneratedDefaultNamePattern.firstMatch(clean);
+    if (legacyMatch != null) return 'Dragon${legacyMatch.group(1)}';
+    return clean;
   }
 
   static String emptyNameFallback(String currentName) {
-    final clean = cleanName(currentName);
+    final clean = normalizeGeneratedPlayerName(currentName);
     if (_generatedDefaultNamePattern.hasMatch(clean)) return clean;
     return randomDefaultPlayerName();
   }
