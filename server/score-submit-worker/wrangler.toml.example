@@ -1,0 +1,10 @@
+name = "shingeki-dragon-score-submit"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+[vars]
+GITHUB_OWNER = "your-github-owner"
+GITHUB_REPO = "your-repo-name"
+GITHUB_BRANCH = "main"
+LEADERBOARD_PATH = "scores/leaderboard.json"
+ALLOWED_ORIGIN = "https://your-github-owner.github.io"

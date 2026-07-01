@@ -1,0 +1,25 @@
+{
+  "scores": [
+    {
+      "name": "SkyRider",
+      "score": 1840,
+      "kills": 23,
+      "date": "2026-07-01T00:00:00Z",
+      "version": "1.0.0"
+    },
+    {
+      "name": "Hinoko",
+      "score": 1320,
+      "kills": 18,
+      "date": "2026-07-01T00:00:00Z",
+      "version": "1.0.0"
+    },
+    {
+      "name": "Player",
+      "score": 960,
+      "kills": 11,
+      "date": "2026-07-01T00:00:00Z",
+      "version": "1.0.0"
+    }
+  ]
+}
