@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,6 +36,14 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
 
     expect(AppSettings.fromPrefs(prefs).playerName, 'Dragon87654321');
+  });
+
+  test('android release manifest declares internet permission', () {
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
+
+    expect(manifest, contains('android.permission.INTERNET'));
   });
 
   test('filterByPeriod applies scoreboard date ranges', () {

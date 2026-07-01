@@ -141,7 +141,7 @@ function parseLeaderboard(text) {
 }
 
 function sanitizeScoreEntry(value) {
-  const name = cleanName(`${value?.name || ''}`) || 'Player';
+  const name = cleanName(`${value?.name || ''}`) || 'Dragon';
   const score = clampInteger(value?.score, 0, 999999999);
   const kills = clampInteger(value?.kills, 0, 999999);
   const date = cleanDate(value?.date);
