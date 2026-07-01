@@ -1,10 +1,12 @@
 @echo off
 setlocal
 
-set "SOURCE_DIR=D:\shingeki_dragon"
-set "PROJECT_DIR=D:\shingeki_dragon_release"
+set "SOURCE_DIR=%~dp0"
+set "PROJECT_DIR=D:\attack_of_dragon_release"
 set "RTK=C:\Users\iogam\bin\rtk.exe"
 set "PACKAGE_NAME=com.example.shingeki_dragon"
+set "LEADERBOARD_URL=https://iogami0103.github.io/attack-of-dragon/scores/leaderboard.json"
+set "SCORE_SUBMIT_URL=https://attack-of-dragon-score-submit.i-ogami-0103.workers.dev"
 set "USB_SERIAL=2A271FDH300GLX"
 set "DEVICE_IP=192.168.1.6"
 set "ADB_PORT=5555"
@@ -87,7 +89,7 @@ if errorlevel 8 (
 )
 
 cd /d "%PROJECT_DIR%"
-echo Installing Shingeki Dragon on %TARGET_SERIAL%...
+echo Installing Attack of Dragon on %TARGET_SERIAL%...
 "%RTK%" flutter pub get
 if errorlevel 1 (
   echo flutter pub get failed.
@@ -95,7 +97,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-"%RTK%" flutter build apk --release
+"%RTK%" flutter build apk --release --dart-define=LEADERBOARD_URL=%LEADERBOARD_URL% --dart-define=SCORE_SUBMIT_URL=%SCORE_SUBMIT_URL%
 if errorlevel 1 (
   echo flutter build apk failed.
   pause
@@ -109,7 +111,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo Starting Shingeki Dragon...
+echo Starting Attack of Dragon...
 "%RTK%" adb -s %TARGET_SERIAL% shell monkey -p %PACKAGE_NAME% -c android.intent.category.LAUNCHER 1
 if errorlevel 1 (
   echo App was installed, but launch failed.
