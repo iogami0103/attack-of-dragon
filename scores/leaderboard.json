@@ -2,6 +2,13 @@
   "title": "Attack of Dragon",
   "scores": [
     {
+      "name": "Pla",
+      "score": 6082,
+      "kills": 201,
+      "date": "2026-07-01T20:27:59.279Z",
+      "version": "1.0.0"
+    },
+    {
       "name": "Dragon72993001",
       "score": 5332,
       "kills": 184,
