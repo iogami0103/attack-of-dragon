@@ -26,7 +26,7 @@ C:\Users\iogam\bin\rtk.exe flutter run -d chrome --dart-define=LEADERBOARD_URL=h
 スコア投稿用の安全なエンドポイントを用意した場合は、`SCORE_SUBMIT_URL` も指定できます。GitHub の書き込みトークンをクライアントへ埋め込まない方針です。
 
 ```powershell
-C:\Users\iogam\bin\rtk.exe flutter run -d chrome --dart-define=LEADERBOARD_URL=https://iogami0103.github.io/attack-of-dragon/scores/leaderboard.json --dart-define=SCORE_SUBMIT_URL=https://attack-of-dragon-score-submit.<account>.workers.dev
+C:\Users\iogam\bin\rtk.exe flutter run -d chrome --dart-define=LEADERBOARD_URL=https://iogami0103.github.io/attack-of-dragon/scores/leaderboard.json --dart-define=SCORE_SUBMIT_URL=https://attack-of-dragon-score-submit.i-ogami-0103.workers.dev
 ```
 
 投稿エンドポイントの雛形は `server/score-submit-worker` にあります。Cloudflare Workersにデプロイし、Worker側の `GITHUB_TOKEN` シークレットでGitHub上の `scores/leaderboard.json` を更新します。

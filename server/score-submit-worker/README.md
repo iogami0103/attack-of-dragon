@@ -22,7 +22,7 @@ wrangler deploy
 ## アプリ起動例
 
 ```powershell
-C:\Users\iogam\bin\rtk.exe flutter run -d chrome --dart-define=LEADERBOARD_URL=https://iogami0103.github.io/attack-of-dragon/scores/leaderboard.json --dart-define=SCORE_SUBMIT_URL=https://attack-of-dragon-score-submit.<account>.workers.dev
+C:\Users\iogam\bin\rtk.exe flutter run -d chrome --dart-define=LEADERBOARD_URL=https://iogami0103.github.io/attack-of-dragon/scores/leaderboard.json --dart-define=SCORE_SUBMIT_URL=https://attack-of-dragon-score-submit.i-ogami-0103.workers.dev
 ```
 
 クライアントにはGitHubトークンを入れません。
