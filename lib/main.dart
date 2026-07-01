@@ -526,8 +526,31 @@ class ScoreboardScreen extends StatefulWidget {
   State<ScoreboardScreen> createState() => _ScoreboardScreenState();
 }
 
+enum ScoreboardSource {
+  online('オンライン', Icons.public_rounded),
+  local('ローカル', Icons.phone_android_rounded);
+
+  const ScoreboardSource(this.label, this.icon);
+
+  final String label;
+  final IconData icon;
+}
+
+enum ScoreboardPeriod {
+  today('今日'),
+  week('週間'),
+  month('月間'),
+  allTime('全期間');
+
+  const ScoreboardPeriod(this.label);
+
+  final String label;
+}
+
 class _ScoreboardScreenState extends State<ScoreboardScreen> {
   late Future<ScoreboardData> _scores;
+  ScoreboardSource _source = ScoreboardSource.online;
+  ScoreboardPeriod _period = ScoreboardPeriod.allTime;
 
   int get _bestScore {
     if (widget.localScores.isEmpty) return 0;
@@ -554,7 +577,13 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                 future: _scores,
                 builder: (context, snapshot) {
                   final data = snapshot.data;
-                  final scores = data?.scores ?? widget.localScores;
+                  final sourceScores = _source == ScoreboardSource.online
+                      ? data?.onlineScores ?? const <ScoreEntry>[]
+                      : widget.localScores;
+                  final scores = ScoreStore.filterByPeriod(
+                    sourceScores,
+                    _period,
+                  );
                   final itemCount = math.min(
                     scores.length,
                     ScoreStore.maxLeaderboardEntries,
@@ -582,7 +611,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Text(
-                                        data?.sourceLabel ?? 'スコアボード',
+                                        'スコアボード',
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleLarge
@@ -603,9 +632,42 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                                 const SizedBox(height: 16),
                                 _BestScoreBlock(score: _bestScore),
                                 const SizedBox(height: 10),
+                                _ScoreboardControls(
+                                  source: _source,
+                                  period: _period,
+                                  onSourceChanged: (value) {
+                                    setState(() => _source = value);
+                                  },
+                                  onPeriodChanged: (value) {
+                                    setState(() => _period = value);
+                                  },
+                                ),
+                                const SizedBox(height: 10),
+                                _ScoreboardListHeader(
+                                  sourceLabel:
+                                      _source == ScoreboardSource.online
+                                      ? data?.sourceLabel ??
+                                            ScoreboardSource.online.label
+                                      : ScoreboardSource.local.label,
+                                  periodLabel: _period.label,
+                                  count: itemCount,
+                                ),
+                                const SizedBox(height: 6),
                                 Expanded(
-                                  child: itemCount == 0
-                                      ? const Center(child: Text('まだ記録がありません'))
+                                  child:
+                                      isLoading &&
+                                          _source == ScoreboardSource.online
+                                      ? const Center(
+                                          child: CircularProgressIndicator(),
+                                        )
+                                      : itemCount == 0
+                                      ? Center(
+                                          child: Text(
+                                            _source == ScoreboardSource.online
+                                                ? 'ランキングがありません'
+                                                : 'ローカル記録がありません',
+                                          ),
+                                        )
                                       : ListView.builder(
                                           itemCount: itemCount,
                                           itemBuilder: (context, index) {
@@ -616,12 +678,12 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                                           },
                                         ),
                                 ),
-                                if (data?.message case final message?
-                                    when message.isNotEmpty)
+                                if (_source == ScoreboardSource.online &&
+                                    (data?.message ?? '').isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 10),
                                     child: Text(
-                                      message,
+                                      data!.message,
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
@@ -650,6 +712,97 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ScoreboardControls extends StatelessWidget {
+  const _ScoreboardControls({
+    required this.source,
+    required this.period,
+    required this.onSourceChanged,
+    required this.onPeriodChanged,
+  });
+
+  final ScoreboardSource source;
+  final ScoreboardPeriod period;
+  final ValueChanged<ScoreboardSource> onSourceChanged;
+  final ValueChanged<ScoreboardPeriod> onPeriodChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = Theme.of(
+      context,
+    ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SegmentedButton<ScoreboardSource>(
+          showSelectedIcon: false,
+          selected: {source},
+          segments: ScoreboardSource.values
+              .map(
+                (value) => ButtonSegment<ScoreboardSource>(
+                  value: value,
+                  icon: Icon(value.icon),
+                  label: Text(value.label, style: textStyle),
+                ),
+              )
+              .toList(),
+          onSelectionChanged: (values) => onSourceChanged(values.first),
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SegmentedButton<ScoreboardPeriod>(
+            showSelectedIcon: false,
+            selected: {period},
+            segments: ScoreboardPeriod.values
+                .map(
+                  (value) => ButtonSegment<ScoreboardPeriod>(
+                    value: value,
+                    label: Text(value.label, style: textStyle),
+                  ),
+                )
+                .toList(),
+            onSelectionChanged: (values) => onPeriodChanged(values.first),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScoreboardListHeader extends StatelessWidget {
+  const _ScoreboardListHeader({
+    required this.sourceLabel,
+    required this.periodLabel,
+    required this.count,
+  });
+
+  final String sourceLabel;
+  final String periodLabel;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.labelMedium?.copyWith(
+      fontWeight: FontWeight.w800,
+      color: Colors.black54,
+    );
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '$sourceLabel / $periodLabel',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text('$count件', style: style),
+      ],
     );
   }
 }
@@ -2026,12 +2179,12 @@ class ScoreEntry {
 
 class ScoreboardData {
   const ScoreboardData({
-    required this.scores,
+    required this.onlineScores,
     required this.sourceLabel,
     required this.message,
   });
 
-  final List<ScoreEntry> scores;
+  final List<ScoreEntry> onlineScores;
   final String sourceLabel;
   final String message;
 }
@@ -2068,25 +2221,57 @@ class ScoreStore {
   static Future<ScoreboardData> loadScoreboard(List<ScoreEntry> local) async {
     try {
       final online = await _loadOnline();
-      final merged = [...online, ...local]
-        ..sort((a, b) => b.score.compareTo(a.score));
       return ScoreboardData(
-        scores: merged.take(maxLeaderboardEntries).toList(),
-        sourceLabel: _leaderboardUrl.isEmpty ? 'スコアボード' : 'オンラインスコア',
+        onlineScores: online.take(maxLeaderboardEntries).toList(),
+        sourceLabel: _leaderboardUrl.isEmpty ? '同梱ランキング' : 'オンライン',
         message: _leaderboardUrl.isEmpty
-            ? 'LEADERBOARD_URL 未設定のため、同梱データとローカル記録を表示しています。'
+            ? 'LEADERBOARD_URL 未設定のため、同梱ランキングを表示しています。'
             : '',
       );
     } catch (_) {
-      final fallback = await _loadBundled();
-      final merged = [...fallback, ...local]
-        ..sort((a, b) => b.score.compareTo(a.score));
       return ScoreboardData(
-        scores: merged.take(maxLeaderboardEntries).toList(),
-        sourceLabel: 'スコアボード',
-        message: 'オンライン取得に失敗したため、同梱データとローカル記録を表示しています。',
+        onlineScores: local.take(maxLeaderboardEntries).toList(),
+        sourceLabel: 'ローカル',
+        message: 'オンライン取得に失敗したため、ローカル記録を表示しています。',
       );
     }
+  }
+
+  static List<ScoreEntry> filterByPeriod(
+    List<ScoreEntry> scores,
+    ScoreboardPeriod period, {
+    DateTime? now,
+  }) {
+    final reference = (now ?? DateTime.now()).toLocal();
+    final referenceDay = DateTime(
+      reference.year,
+      reference.month,
+      reference.day,
+    );
+    final filtered = scores.where((score) {
+      final scoreDate = score.date.toLocal();
+      final scoreDay = DateTime(scoreDate.year, scoreDate.month, scoreDate.day);
+      return switch (period) {
+        ScoreboardPeriod.today => scoreDay == referenceDay,
+        ScoreboardPeriod.week => _isWithinDays(scoreDay, referenceDay, days: 7),
+        ScoreboardPeriod.month => _isWithinDays(
+          scoreDay,
+          referenceDay,
+          days: 30,
+        ),
+        ScoreboardPeriod.allTime => !scoreDay.isAfter(referenceDay),
+      };
+    }).toList()..sort((a, b) => b.score.compareTo(a.score));
+    return filtered.take(maxLeaderboardEntries).toList();
+  }
+
+  static bool _isWithinDays(
+    DateTime scoreDay,
+    DateTime referenceDay, {
+    required int days,
+  }) {
+    final firstDay = referenceDay.subtract(Duration(days: days - 1));
+    return !scoreDay.isBefore(firstDay) && !scoreDay.isAfter(referenceDay);
   }
 
   static Future<List<ScoreEntry>> _loadOnline() async {
