@@ -1,25 +1,31 @@
 {
-  "title": "Attack of Dragon",
   "scores": [
     {
       "name": "SkyRider",
       "score": 1840,
       "kills": 23,
-      "date": "2026-07-01T00:00:00Z",
+      "date": "2026-07-01T00:00:00.000Z",
       "version": "1.0.0"
     },
     {
       "name": "Hinoko",
       "score": 1320,
       "kills": 18,
-      "date": "2026-07-01T00:00:00Z",
+      "date": "2026-07-01T00:00:00.000Z",
       "version": "1.0.0"
     },
     {
       "name": "Player",
       "score": 960,
       "kills": 11,
-      "date": "2026-07-01T00:00:00Z",
+      "date": "2026-07-01T00:00:00.000Z",
+      "version": "1.0.0"
+    },
+    {
+      "name": "CodexCheck",
+      "score": 1,
+      "kills": 0,
+      "date": "2026-07-01T19:05:00.000Z",
       "version": "1.0.0"
     }
   ]
