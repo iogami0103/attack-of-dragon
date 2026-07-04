@@ -2,7 +2,28 @@
 
 Flutter で実装した縦画面向けエンドレス飛行アクションです。
 
+## GitHub共有
+
+リポジトリ: `https://github.com/iogami0103/attack-of-dragon`
+
+Windows と Mac の両方で同じリポジトリを使います。作業前に取得し、作業後にコミットして送信します。
+
+```bash
+git pull
+git add -A
+git commit -m "変更内容"
+git push
+```
+
+ビルド成果物、Flutter/CocoaPods の生成物、署名鍵、ローカル設定はコミットしません。
+
 ## 実行
+
+Windows ではプロジェクト直下の `進撃のドラゴン PC 起動.cmd` を使うと、依存取得、Windowsリリースビルド、起動まで行います。
+
+iPhone へ入れる場合は Mac で `進撃のドラゴン iPhone インストール.command` を実行します。ビルド完了後、インストール直前にiPhoneロック解除の確認で一度止まります。
+
+Flutter コマンドで直接起動する場合:
 
 ```powershell
 C:\Users\iogam\bin\rtk.exe flutter run -d chrome
