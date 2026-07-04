@@ -25,7 +25,7 @@ On macOS, use normal shell commands instead. Do not try to use the Windows RTK p
 - Before pushing, run `powershell -ExecutionPolicy Bypass -File tools\github_workflow_check.ps1 -RunFlutterChecks`.
 - Use `gh auth status` before creating PRs from the local machine. If `gh` is not logged in, ask the user to complete GitHub browser authentication.
 - Never print or commit secret values. For local secret checks, use `tools/local_secret_inventory.ps1` on Windows or `tools/local_secret_inventory.sh` on macOS.
-- Before ending a session (or before the final push), append an entry to `docs/SESSION_HANDOFF.md` describing what was done and what the next session should know. Always state whether the session ran on Windows or Mac. See that file for the template.
+- Before ending a session (or before the final push), append an entry to `docs/SESSION_HANDOFF.md` describing what was done and what the next session should know. Always state the device/environment (`Windows`, `Mac`, `Android`, `Cloud`, etc.) and AI (`Codex`, `Claude`, etc.). See that file for the template and shared multi-device workflow.
 
 ## Verification
 
