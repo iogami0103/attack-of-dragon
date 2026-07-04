@@ -5149,6 +5149,10 @@ class GameAudio {
       );
   final audio_session.AudioSessionConfiguration _musicSessionConfiguration =
       const audio_session.AudioSessionConfiguration(
+        // iOS: カテゴリ未指定だとネイティブ側が SoloAmbient にフォールバックし、
+        // マナースイッチ(消音)や他アプリ音声の割り込みで効果音・BGMが
+        // 無音になる。ゲーム音声は playback で常に再生する。
+        avAudioSessionCategory: audio_session.AVAudioSessionCategory.playback,
         androidAudioAttributes: audio_session.AndroidAudioAttributes(
           contentType: audio_session.AndroidAudioContentType.music,
           usage: audio_session.AndroidAudioUsage.game,
