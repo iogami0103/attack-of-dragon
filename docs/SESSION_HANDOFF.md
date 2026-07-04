@@ -38,6 +38,16 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-05 Device: Windows / AI: Codex — 英語ローカライズを main に取り込み
+
+- Branch: `main`
+- PR: 未作成
+- やったこと:
+  - ユーザーが実機で英語ローカライズ表示を確認済み。
+  - `codex/english-localization` を `main` に fast-forward merge。
+- 次のセッションへの申し送り:
+  - ローカル `main` は `origin/main` より進んでいる。GitHub へ反映する場合は、通常の pre-push workflow check を通してから push する。
+
 ## 2026-07-05 Device: Windows / AI: Codex — 英語ローカライズ対応
 
 - Branch: `codex/english-localization`
