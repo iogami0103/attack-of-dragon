@@ -77,12 +77,16 @@ const _googleServerClientId = String.fromEnvironment(
 const _gameVersion = '1.0.0';
 const _gameBgmIntroFile = 'game_bgm_intro.ogg';
 const _gameBgmLoopFile = 'game_bgm_loop.ogg';
-const _dragonFireSfxFile = 'dragon_fire_flame_pip.wav';
+// 炎SFXは単発音(82ms)を発射間隔0.14sで敷き詰めた2.24sのループ音源。
+// iOS(AVPlayer)は seek→play の再始動レイテンシが大きく、単発音を発射ごとに
+// 鳴らし直すと連続音が途切れるため、連射中はループ再生で鳴らし続ける。
+const _dragonFireLoopSfxFile = 'dragon_fire_flame_loop.wav';
 const _enemyBurstSfxFile = 'enemy_explosion_ultimate_snap_boom_007.ogg';
 const _dragonFireSfxVolumeScale = 0.18;
 const _enemyBurstSfxVolumeScale = 0.14;
 const _interstitialRetryPlayTime = Duration(minutes: 3);
-const _preloadedSfxFiles = <String>[_dragonFireSfxFile, _enemyBurstSfxFile];
+const _preloadedSfxFiles = <String>[_enemyBurstSfxFile];
+const _preloadedLoopSfxFiles = <String>[_dragonFireLoopSfxFile];
 
 String get _scoreApiUrl {
   if (_scoreSubmitUrl.isNotEmpty) return _scoreSubmitUrl;
@@ -1357,6 +1361,7 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
     await repairJustAudioAssetCache();
     if (!mounted) return;
     unawaited(_audio.preloadSfx(_preloadedSfxFiles));
+    unawaited(_audio.preloadLoopSfx(_preloadedLoopSfxFiles));
     unawaited(
       _audio.playMusicIntroThenLoop(
         introFile: _gameBgmIntroFile,
@@ -2828,6 +2833,8 @@ class _GameScreenState extends State<GameScreen>
   static const _dragonFrameSize = Size(256, 192);
   static const _enemyCellSize = Size(256, 256);
   static const double _fireSpreadAngle = 0.20;
+  // 最後の発射からこの時間だけ炎ループ音を鳴らし続ける(発射間隔0.14sより長く)。
+  static const double _fireSfxLingerSeconds = 0.25;
   static const double _tapLiftSpeedFactor = 0.36;
   static const double _rhythmTapInterval = 0.75;
   static const double _gravityFactor =
@@ -2849,6 +2856,7 @@ class _GameScreenState extends State<GameScreen>
   int _kills = 0;
   double _spawnTimer = 0.8;
   double _fireTimer = 0;
+  double _fireSfxStopTimer = 0;
   bool _scoreRecorded = false;
   bool _isNewRecord = false;
   int _runId = 0;
@@ -2868,6 +2876,7 @@ class _GameScreenState extends State<GameScreen>
 
   @override
   void dispose() {
+    _stopFireSfx();
     _ticker.dispose();
     super.dispose();
   }
@@ -2887,6 +2896,7 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _reset() {
+    _stopFireSfx();
     setState(() {
       _state = RunState.ready;
       _time = 0;
@@ -2966,6 +2976,7 @@ class _GameScreenState extends State<GameScreen>
 
   void _togglePause() {
     if (_state == RunState.playing) {
+      _stopFireSfx();
       setState(() => _state = RunState.paused);
     } else if (_state == RunState.paused) {
       setState(() => _state = RunState.playing);
@@ -3005,6 +3016,12 @@ class _GameScreenState extends State<GameScreen>
       if (targets.isNotEmpty) {
         _shootFire(targets.first);
         _fireTimer = 0.14;
+      }
+    }
+    if (_fireSfxStopTimer > 0) {
+      _fireSfxStopTimer -= dt;
+      if (_fireSfxStopTimer <= 0) {
+        _stopFireSfx();
       }
     }
 
@@ -3103,12 +3120,18 @@ class _GameScreenState extends State<GameScreen>
         ),
       );
     }
+    _fireSfxStopTimer = _fireSfxLingerSeconds;
     unawaited(
-      widget.audio.playSfx(
-        _dragonFireSfxFile,
+      widget.audio.startLoopSfx(
+        _dragonFireLoopSfxFile,
         volumeScale: _dragonFireSfxVolumeScale,
       ),
     );
+  }
+
+  void _stopFireSfx() {
+    _fireSfxStopTimer = 0;
+    unawaited(widget.audio.stopLoopSfx(_dragonFireLoopSfxFile));
   }
 
   void _shootEnemyBullet(EnemyModel enemy) {
@@ -3195,6 +3218,7 @@ class _GameScreenState extends State<GameScreen>
   void _gameOver() {
     if (_state == RunState.gameOver) return;
     _state = RunState.gameOver;
+    _stopFireSfx();
     _playSecondsSinceInterstitial += _time;
     _velocityY = 0;
     _isNewRecord = _score.round() > widget.bestScore;
@@ -5165,6 +5189,7 @@ class GameAudio {
   AppSettings _settings = AppSettings.defaults();
   Future<void> _musicQueue = Future<void>.value();
   final Map<String, _SfxPool> _sfxPools = {};
+  final Map<String, _LoopSfx> _loopSfx = {};
   int _musicGeneration = 0;
   String? _requestedMusicIntroFile;
   String? _requestedMusicFile;
@@ -5207,6 +5232,19 @@ class GameAudio {
 
   Future<void> preloadSfx(Iterable<String> files) async {
     await Future.wait(files.toSet().map(_ensureSfxPool));
+  }
+
+  Future<void> preloadLoopSfx(Iterable<String> files) async {
+    await Future.wait(
+      files.toSet().map((file) async {
+        final loop = _ensureLoopSfx(file);
+        try {
+          await loop.ready;
+        } catch (error) {
+          _logAudioError('load $file', error);
+        }
+      }),
+    );
   }
 
   static bool get _playsOggNatively =>
@@ -5348,6 +5386,10 @@ class GameAudio {
     if (active == _appActive) return Future<void>.value();
     _appActive = active;
     if (!active) {
+      // ループSFXはゲーム側のtickerが止まると止められないため、ここで止める。
+      for (final file in _loopSfx.keys.toList()) {
+        unawaited(stopLoopSfx(file));
+      }
       final generation = _musicGeneration;
       unawaited(_pauseMusicForBackground(generation));
       return _enqueueMusic(() async {
@@ -5479,6 +5521,85 @@ class GameAudio {
     }
   }
 
+  // 連射中に鳴らし続けるループSFX。単発SFXと違い、start/stop で
+  // 再生状態を切り替えるだけなので発射ごとの再始動レイテンシが出ない。
+  Future<void> startLoopSfx(String file, {double volumeScale = 1}) {
+    if (_disposed || !_appActive) return Future<void>.value();
+    final volume = (_settings.volume * volumeScale).clamp(0.0, 1.0).toDouble();
+    if (volume <= 0) return stopLoopSfx(file);
+    final loop = _ensureLoopSfx(file);
+    loop.wanted = true;
+    return loop.enqueue(() async {
+      try {
+        await loop.ready;
+      } catch (error) {
+        _logAudioError('load $file', error);
+        if (identical(_loopSfx[file], loop)) {
+          _loopSfx.remove(file);
+        }
+        unawaited(loop.dispose());
+        return;
+      }
+      if (_disposed || !_appActive || !loop.wanted) return;
+      try {
+        await _activateAudioSession();
+        if (_disposed || !_appActive || !loop.wanted) return;
+        if (loop.player.volume != volume) {
+          await loop.player.setVolume(volume);
+        }
+        if (_disposed || !_appActive || !loop.wanted) return;
+        if (loop.player.playing) return;
+        await loop.player.seek(Duration.zero);
+        if (_disposed || !_appActive || !loop.wanted) return;
+        unawaited(
+          loop.player.play().catchError((Object error) {
+            _logAudioError('play $file', error);
+          }),
+        );
+      } catch (error) {
+        _logAudioError('play $file', error);
+      }
+    });
+  }
+
+  Future<void> stopLoopSfx(String file) {
+    final loop = _loopSfx[file];
+    if (loop == null) return Future<void>.value();
+    loop.wanted = false;
+    return loop.enqueue(() async {
+      if (loop.wanted) return;
+      try {
+        await loop.ready;
+      } catch (_) {
+        return;
+      }
+      try {
+        await loop.player.pause();
+      } catch (error) {
+        _logAudioError('stop $file', error);
+      }
+    });
+  }
+
+  _LoopSfx _ensureLoopSfx(String file) {
+    return _loopSfx.putIfAbsent(file, () {
+      final player = ja.AudioPlayer(
+        handleInterruptions: false,
+        androidApplyAudioAttributes: false,
+        useLazyPreparation: false,
+      );
+      final ready = () async {
+        await _setAndroidAudioAttributes(player);
+        await player.setLoopMode(ja.LoopMode.one);
+        await player.setAudioSource(
+          createGameAudioSource(_audioAssetPath(file)),
+          preload: true,
+        );
+      }();
+      return _LoopSfx(player: player, ready: ready);
+    });
+  }
+
   _SfxPool _createSfxPool(String file) {
     final players = List.generate(
       _sfxPoolSize,
@@ -5549,6 +5670,35 @@ class GameAudio {
     for (final pool in _sfxPools.values) {
       unawaited(pool.dispose());
     }
+    for (final loop in _loopSfx.values) {
+      unawaited(loop.dispose());
+    }
+  }
+}
+
+class _LoopSfx {
+  _LoopSfx({required this.player, required this.ready});
+
+  final ja.AudioPlayer player;
+  final Future<void> ready;
+  // 直近の要求が「再生中であるべき」かどうか。start/stop の非同期処理が
+  // 交錯しても最後の要求が勝つよう、キュー内の各処理がこれを確認する。
+  bool wanted = false;
+  Future<void> _queue = Future<void>.value();
+
+  Future<void> enqueue(Future<void> Function() operation) {
+    final next = _queue.then((_) => operation());
+    _queue = next.catchError((_) {});
+    return next;
+  }
+
+  Future<void> dispose() async {
+    try {
+      await ready;
+    } catch (_) {}
+    try {
+      await player.dispose();
+    } catch (_) {}
   }
 }
 
