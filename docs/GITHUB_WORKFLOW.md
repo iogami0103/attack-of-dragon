@@ -77,6 +77,12 @@ C:\Users\iogam\bin\rtk.exe gh auth status
 C:\Users\iogam\bin\rtk.exe gh auth login
 ```
 
+## セッションの引き継ぎ
+
+Windows と Mac のどちらで作業したセッションかが後から分かるように、
+セッション終了前に `docs/SESSION_HANDOFF.md` に記録を追記します。
+書き方のルールとテンプレートはそのファイルの先頭にあります。
+
 ## コミットしないもの
 
 以下はローカル設定または秘密情報です。`.gitignore` で除外済みですが、コミット前にも確認します。
