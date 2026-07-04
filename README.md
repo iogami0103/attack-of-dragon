@@ -14,7 +14,7 @@ C:\Users\iogam\bin\rtk.exe git status --short --branch
 C:\Users\iogam\bin\rtk.exe git pull --ff-only
 ```
 
-Codex で作業する場合の詳細は `AGENTS.md`、人間向けの手順は `docs/GITHUB_WORKFLOW.md` にまとめています。ローカル状態の確認は次のコマンドで実行できます。
+Codex で作業する場合の詳細は `AGENTS.md`、人間向けの手順は `docs/GITHUB_WORKFLOW.md`、Mac/Windows で秘密情報を復元する手順は `docs/LOCAL_SECRETS.md` にまとめています。ローカル状態の確認は次のコマンドで実行できます。
 
 ```powershell
 C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\github_workflow_check.ps1

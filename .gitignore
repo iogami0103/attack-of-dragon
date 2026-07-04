@@ -64,6 +64,9 @@ ui_report_images/
 __pycache__/
 *.pyc
 
+# Local-only secret staging
+.local-secrets/
+
 # Cloudflare Wrangler local cache
 server/**/.wrangler/
 server/**/.dev.vars

@@ -4,7 +4,7 @@ These instructions apply to the whole repository.
 
 ## Shell commands on this Windows PC
 
-Always prefix shell commands with the absolute RTK executable path:
+On this Windows PC, always prefix shell commands with the absolute RTK executable path:
 
 ```powershell
 C:\Users\iogam\bin\rtk.exe git status
@@ -14,6 +14,8 @@ C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\github
 
 Use the absolute path because Codex shells may not include `C:\Users\iogam\bin` in `PATH`.
 
+On macOS, use normal shell commands instead. Do not try to use the Windows RTK path on Mac.
+
 ## GitHub workflow
 
 - Remote: `origin` -> `https://github.com/iogami0103/attack-of-dragon.git`
@@ -22,6 +24,7 @@ Use the absolute path because Codex shells may not include `C:\Users\iogam\bin` 
 - Commit directly to `main` only when the user explicitly asks for a direct update or the change is a small repository-maintenance task.
 - Before pushing, run `powershell -ExecutionPolicy Bypass -File tools\github_workflow_check.ps1 -RunFlutterChecks`.
 - Use `gh auth status` before creating PRs from the local machine. If `gh` is not logged in, ask the user to complete GitHub browser authentication.
+- Never print or commit secret values. For local secret checks, use `tools/local_secret_inventory.ps1` on Windows or `tools/local_secret_inventory.sh` on macOS.
 
 ## Verification
 
