@@ -47,6 +47,7 @@ dependencies:
   sign_in_with_apple: ^8.1.0
   google_mobile_ads: ^9.0.0
   in_app_purchase: ^3.3.0
+  app_tracking_transparency: ^2.0.7
 
 dev_dependencies:
   flutter_test:

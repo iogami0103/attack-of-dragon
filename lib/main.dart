@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:audio_session/audio_session.dart' as audio_session;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -454,6 +455,7 @@ class AdMobService {
   AdMobService();
 
   static Future<InitializationStatus>? _mobileAdsInitialization;
+  static Future<void>? _trackingAuthorizationRequest;
 
   InterstitialAd? _interstitialAd;
   bool _interstitialLoading = false;
@@ -632,6 +634,7 @@ class AdMobService {
 
   static Future<void> _ensureInitialized() async {
     if (!supported) return;
+    await _ensureTrackingAuthorization();
     var initialization = _mobileAdsInitialization;
     if (initialization == null) {
       initialization = MobileAds.instance.initialize().catchError((
@@ -643,6 +646,23 @@ class AdMobService {
       _mobileAdsInitialization = initialization;
     }
     await initialization;
+  }
+
+  static Future<void> _ensureTrackingAuthorization() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
+    _trackingAuthorizationRequest ??= _requestTrackingAuthorization();
+    await _trackingAuthorizationRequest;
+  }
+
+  static Future<void> _requestTrackingAuthorization() async {
+    try {
+      final status = await AppTrackingTransparency.trackingAuthorizationStatus;
+      if (status != TrackingStatus.notDetermined) return;
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await AppTrackingTransparency.requestTrackingAuthorization();
+    } catch (_) {
+      // Ads should still load if ATT cannot be shown on this device/session.
+    }
   }
 }
 

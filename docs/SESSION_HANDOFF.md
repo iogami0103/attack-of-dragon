@@ -184,3 +184,17 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 - Notes for next session:
   - No Android debug APK build was run because this was a normal Flutter UI layout change, not packaging-sensitive.
   - If pushing this branch, run the repository pre-push workflow check first.
+
+## 2026-07-05 Device: Windows / AI: Codex - Add iOS ATT request and Android ad ID permission
+
+- Branch: `codex/tracking-permission`
+- PR: not created
+- Done:
+  - Added `app_tracking_transparency` and request ATT authorization on iOS before `MobileAds.instance.initialize()` when ads are enabled and tracking status is still undetermined.
+  - Added `NSUserTrackingUsageDescription` to `ios/Runner/Info.plist`.
+  - Added explicit Android `com.google.android.gms.permission.AD_ID` to the main manifest and updated the manifest unit test.
+  - Verified generated debug APK permissions include `android.permission.INTERNET` and `com.google.android.gms.permission.AD_ID`.
+  - Ran `flutter analyze`, `flutter test`, and `flutter build apk --debug`; all passed.
+- Notes for next session:
+  - iOS ATT dialog still needs confirmation on a real iPhone/TestFlight fresh install because this Windows session cannot build or run iOS.
+  - Android does not show an iOS-style ATT runtime prompt; Play Console advertising ID declaration should match the app's Google Mobile Ads usage.

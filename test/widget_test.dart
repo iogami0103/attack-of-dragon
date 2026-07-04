@@ -206,12 +206,13 @@ void main() {
     expect(scores.single.kills, 0);
   });
 
-  test('android release manifest declares internet permission', () {
+  test('android release manifest declares ad permissions', () {
     final manifest = File(
       'android/app/src/main/AndroidManifest.xml',
     ).readAsStringSync();
 
     expect(manifest, contains('android.permission.INTERNET'));
+    expect(manifest, contains('com.google.android.gms.permission.AD_ID'));
   });
 
   test('filterByPeriod applies scoreboard date ranges', () {
