@@ -3,8 +3,16 @@ Audio assets
 
 Runtime sound effects are limited to:
 
-- `dragon_fire_flame_pip.wav`: dragon fire breath.
+- `dragon_fire_flame_loop.wav`: dragon fire breath. The 82 ms pip from
+  `dragon_fire_flame_pip.wav` tiled at the in-game 0.14 s fire interval into a
+  2.24 s loop. Played with `LoopMode.one` while the dragon is firing, because
+  retriggering the one-shot per fireball stutters on iOS (AVPlayer seek→play
+  restart latency).
 - `enemy_explosion_ultimate_snap_boom_007.ogg`: enemy burst.
+
+Source material kept for regeneration:
+
+- `dragon_fire_flame_pip.wav`: the single 82 ms pip the loop is built from.
 
 Music
 =====
@@ -29,7 +37,7 @@ reliably decode OGG. Windows uses WAV for the enemy-hit one-shot sound:
 Sources
 =======
 
-`dragon_fire_flame_pip.wav`
+`dragon_fire_flame_pip.wav` / `dragon_fire_flame_loop.wav`
 - Source: generated locally for this game.
 
 `enemy_explosion_ultimate_snap_boom_007.ogg` /

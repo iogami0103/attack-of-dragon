@@ -14,7 +14,7 @@ void main() {
     const files = [
       'game_bgm_intro.ogg',
       'game_bgm_loop.ogg',
-      'dragon_fire_flame_pip.wav',
+      'dragon_fire_flame_loop.wav',
       'enemy_explosion_ultimate_snap_boom_007.ogg',
     ];
 
