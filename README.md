@@ -6,13 +6,18 @@ Flutter で実装した縦画面向けエンドレス飛行アクションです
 
 リポジトリ: `https://github.com/iogami0103/attack-of-dragon`
 
-Windows と Mac の両方で同じリポジトリを使います。作業前に取得し、作業後にコミットして送信します。
+Windows と Mac の両方で同じリポジトリを使います。作業前に必ずリモートを取得し、fast-forward できる状態で始めます。
 
-```bash
-git pull
-git add -A
-git commit -m "変更内容"
-git push
+```powershell
+C:\Users\iogam\bin\rtk.exe git fetch --prune origin
+C:\Users\iogam\bin\rtk.exe git status --short --branch
+C:\Users\iogam\bin\rtk.exe git pull --ff-only
+```
+
+Codex で作業する場合の詳細は `AGENTS.md`、人間向けの手順は `docs/GITHUB_WORKFLOW.md` にまとめています。ローカル状態の確認は次のコマンドで実行できます。
+
+```powershell
+C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\github_workflow_check.ps1
 ```
 
 ビルド成果物、Flutter/CocoaPods の生成物、署名鍵、ローカル設定はコミットしません。`android/key.properties.example` と `server/score-submit-worker/wrangler.toml.example` をコピーし、各自のローカル環境で実値を入れてください。
