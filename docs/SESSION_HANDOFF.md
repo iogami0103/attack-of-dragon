@@ -38,6 +38,16 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-05 Device: Windows / AI: Codex — main push 準備
+
+- Branch: `main`
+- PR: 未作成
+- やったこと:
+  - ユーザーから `main` の push 承認を受けた。
+  - `origin/main` との差分は、起動スクリプト差分、英語ローカライズ対応、英語ローカライズ merge 記録。
+- 次のセッションへの申し送り:
+  - push 前に `tools\github_workflow_check.ps1 -RunFlutterChecks` を実行する。
+
 ## 2026-07-05 Device: Windows / AI: Codex — 英語ローカライズを main に取り込み
 
 - Branch: `main`
