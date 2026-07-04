@@ -1521,59 +1521,65 @@ class TitleScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const _SkyBackdrop(),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    'assets/images/title_logo.png',
-                    width: math.min(MediaQuery.sizeOf(context).width - 48, 560),
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(height: 28),
-                  _GamePanel(
-                    maxWidth: 352,
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _MenuButton(
-                          icon: Icons.play_arrow_rounded,
-                          label: 'スタート',
-                          onPressed: () {
-                            onStart();
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        _MenuButton(
-                          icon: Icons.tune_rounded,
-                          label: '設定',
-                          onPressed: () {
-                            onSettings();
-                          },
-                        ),
-                        const SizedBox(height: 14),
-                        _MenuButton(
-                          icon: Icons.leaderboard_rounded,
-                          label: 'スコアボード',
-                          onPressed: () {
-                            onScoreboard();
-                          },
-                        ),
-                      ],
+      body: SafeArea(
+        bottom: false,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const _SkyBackdrop(),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.asset(
+                      'assets/images/title_logo.png',
+                      width: math.min(
+                        MediaQuery.sizeOf(context).width - 48,
+                        560,
+                      ),
+                      fit: BoxFit.contain,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 28),
+                    _GamePanel(
+                      maxWidth: 352,
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _MenuButton(
+                            icon: Icons.play_arrow_rounded,
+                            label: 'スタート',
+                            onPressed: () {
+                              onStart();
+                            },
+                          ),
+                          const SizedBox(height: 14),
+                          _MenuButton(
+                            icon: Icons.tune_rounded,
+                            label: '設定',
+                            onPressed: () {
+                              onSettings();
+                            },
+                          ),
+                          const SizedBox(height: 14),
+                          _MenuButton(
+                            icon: Icons.leaderboard_rounded,
+                            label: 'スコアボード',
+                            onPressed: () {
+                              onScoreboard();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -3465,67 +3471,73 @@ class _GameScreenState extends State<GameScreen>
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: SafeArea(
+              bottom: false,
+              child: Center(child: CircularProgressIndicator()),
+            ),
           );
         }
         final images = snapshot.data!;
         return Scaffold(
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final size = Size(constraints.maxWidth, constraints.maxHeight);
-              if (_worldSize != size) {
-                _worldSize = size;
-                if (_dragonY == 0) _dragonY = size.height * 0.45;
-              }
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _tap,
-                      child: CustomPaint(
-                        painter: DragonGamePainter(
-                          images: images,
-                          state: _state,
-                          time: _time,
-                          backgroundOffset: _backgroundOffset,
-                          score: _score,
-                          kills: _kills,
-                          dragonRect: _dragonRect,
-                          dragonFrameSize: _dragonFrameSize,
-                          enemyCellSize: _enemyCellSize,
-                          enemies: _enemies,
-                          fireballs: _fireballs,
-                          enemyBullets: _enemyBullets,
-                          effects: _effects,
+          body: SafeArea(
+            bottom: false,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final size = Size(constraints.maxWidth, constraints.maxHeight);
+                if (_worldSize != size) {
+                  _worldSize = size;
+                  if (_dragonY == 0) _dragonY = size.height * 0.45;
+                }
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _tap,
+                        child: CustomPaint(
+                          painter: DragonGamePainter(
+                            images: images,
+                            state: _state,
+                            time: _time,
+                            backgroundOffset: _backgroundOffset,
+                            score: _score,
+                            kills: _kills,
+                            dragonRect: _dragonRect,
+                            dragonFrameSize: _dragonFrameSize,
+                            enemyCellSize: _enemyCellSize,
+                            enemies: _enemies,
+                            fireballs: _fireballs,
+                            enemyBullets: _enemyBullets,
+                            effects: _effects,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  if (_state == RunState.ready)
-                    const IgnorePointer(child: _ReadyPrompt()),
-                  if (_state == RunState.paused)
-                    _PauseOverlay(onResume: _togglePause),
-                  if (_state == RunState.gameOver)
-                    _ResultOverlay(
-                      score: _score.round(),
-                      bestScore: math.max(widget.bestScore, _score.round()),
-                      kills: _kills,
-                      isNewRecord: _isNewRecord,
-                      onRetry: _retry,
-                      onTitle: widget.onTitle,
-                      onScoreboard: widget.onScoreboard,
-                      audio: widget.audio,
-                    ),
-                  if (_state == RunState.playing || _state == RunState.paused)
-                    _PauseButton(
-                      paused: _state == RunState.paused,
-                      onPressed: _togglePause,
-                    ),
-                ],
-              );
-            },
+                    if (_state == RunState.ready)
+                      const IgnorePointer(child: _ReadyPrompt()),
+                    if (_state == RunState.paused)
+                      _PauseOverlay(onResume: _togglePause),
+                    if (_state == RunState.gameOver)
+                      _ResultOverlay(
+                        score: _score.round(),
+                        bestScore: math.max(widget.bestScore, _score.round()),
+                        kills: _kills,
+                        isNewRecord: _isNewRecord,
+                        onRetry: _retry,
+                        onTitle: widget.onTitle,
+                        onScoreboard: widget.onScoreboard,
+                        audio: widget.audio,
+                      ),
+                    if (_state == RunState.playing || _state == RunState.paused)
+                      _PauseButton(
+                        paused: _state == RunState.paused,
+                        onPressed: _togglePause,
+                      ),
+                  ],
+                );
+              },
+            ),
           ),
         );
       },

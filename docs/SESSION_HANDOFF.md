@@ -72,3 +72,17 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 - 次のセッションへの申し送り:
   - 今後、Windows PC / Mac のどちらでセッションを実行しても、作業終了前に必ずこのログにエントリを追加すること
   - 過去の作業内容（例: ローカル秘密情報の復元手順追加など）はこのログ導入前のものなので、詳細は `git log` / マージ済みPRを参照
+
+## 2026-07-04 Device: Windows / AI: Codex - Keep game screen out of notification/status area
+
+- Branch: `codex/keep-game-out-of-status-area`
+- PR: not created
+- Done:
+  - Wrapped the `GameScreen` loading state and main playfield in `SafeArea`.
+  - Wrapped the `TitleScreen` playfield in `SafeArea` with the same top notification/status area avoidance.
+  - Set the game/title `SafeArea` bottom edge to `false`; the banner keeps its own bottom safe area, avoiding an extra blank strip above ads.
+  - The game world size now comes from the safe-area-constrained layout, so background, dragon, enemies, bullets, prompts, and result overlays stay below the device notification/status area.
+  - Ran `flutter analyze` and `flutter test`; both passed.
+- Notes for next session:
+  - No Android debug APK build was run because this was a normal Flutter UI layout change, not packaging-sensitive.
+  - If pushing this branch, run the repository pre-push workflow check first.
