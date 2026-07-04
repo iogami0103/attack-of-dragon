@@ -43,7 +43,9 @@ ios/Runner.xcodeproj/xcuserdata/
 
 # Signing/secrets
 *.p8
+AuthKey_*.p8
 *.p12
+*.pem
 *.cer
 *.mobileprovision
 GoogleService-Info.plist
@@ -51,6 +53,11 @@ google-services.json
 *.env
 .env
 .env.*
+!.env.example
+*.ipa
+*.apk
+*.aab
+*.xcarchive
 
 # Project generated reports/caches
 ui_report_images/
@@ -59,3 +66,5 @@ __pycache__/
 
 # Cloudflare Wrangler local cache
 server/**/.wrangler/
+server/**/.dev.vars
+server/score-submit-worker/wrangler.toml

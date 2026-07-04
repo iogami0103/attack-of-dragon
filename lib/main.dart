@@ -20,11 +20,11 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'audio_cache.dart';
 import 'audio_source.dart';
 
+const _productionScoreSubmitUrl =
+    'https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev';
 const _scoreSubmitUrl = String.fromEnvironment(
   'SCORE_SUBMIT_URL',
-  defaultValue: kReleaseMode
-      ? 'https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev'
-      : '',
+  defaultValue: kReleaseMode ? _productionScoreSubmitUrl : '',
 );
 const _adMobEnabled = bool.fromEnvironment('ADMOB_ENABLED', defaultValue: true);
 const _adMobUseTestIds = bool.fromEnvironment(
@@ -83,6 +83,15 @@ const _dragonFireSfxVolumeScale = 0.18;
 const _enemyBurstSfxVolumeScale = 0.14;
 const _interstitialRetryPlayTime = Duration(minutes: 3);
 const _preloadedSfxFiles = <String>[_dragonFireSfxFile, _enemyBurstSfxFile];
+
+String get _scoreApiUrl {
+  if (_scoreSubmitUrl.isNotEmpty) return _scoreSubmitUrl;
+  if (kIsWeb) return '';
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android || TargetPlatform.iOS => _productionScoreSubmitUrl,
+    _ => '',
+  };
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -264,7 +273,7 @@ class _UiColors {
 class AdMobService {
   AdMobService();
 
-  static bool _mobileAdsInitialized = false;
+  static Future<InitializationStatus>? _mobileAdsInitialization;
 
   InterstitialAd? _interstitialAd;
   bool _interstitialLoading = false;
@@ -337,18 +346,21 @@ class AdMobService {
 
   void warmUp() {
     if (!canShowAds) return;
-    _ensureInitialized();
     _loadInterstitial();
   }
 
-  BannerAd createBannerAd({
+  Future<BannerAd> createBannerAd({
     required VoidCallback onLoaded,
     required VoidCallback onFailed,
-  }) {
-    _ensureInitialized();
+  }) async {
+    final adUnitId = _bannerAdUnitId;
+    if (!canShowAds || adUnitId.isEmpty) {
+      throw StateError('admob_banner_unavailable');
+    }
+    await _ensureInitialized();
     return BannerAd(
       size: AdSize.banner,
-      adUnitId: _bannerAdUnitId,
+      adUnitId: adUnitId,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (_) => onLoaded(),
@@ -402,11 +414,19 @@ class AdMobService {
     if (!canShowAds || _interstitialLoading || _interstitialAd != null) return;
     final adUnitId = _interstitialAdUnitId;
     if (adUnitId.isEmpty) return;
-    _ensureInitialized();
 
     _interstitialLoading = true;
-    unawaited(
-      InterstitialAd.load(
+    unawaited(_loadInterstitialAfterInitialization(adUnitId));
+  }
+
+  Future<void> _loadInterstitialAfterInitialization(String adUnitId) async {
+    try {
+      await _ensureInitialized();
+      if (!canShowAds) {
+        _interstitialLoading = false;
+        return;
+      }
+      await InterstitialAd.load(
         adUnitId: adUnitId,
         request: const AdRequest(),
         adLoadCallback: InterstitialAdLoadCallback(
@@ -418,8 +438,10 @@ class AdMobService {
             _interstitialLoading = false;
           },
         ),
-      ),
-    );
+      );
+    } catch (_) {
+      _interstitialLoading = false;
+    }
   }
 
   void dispose() {
@@ -428,10 +450,19 @@ class AdMobService {
     _interstitialLoading = false;
   }
 
-  static void _ensureInitialized() {
-    if (!supported || _mobileAdsInitialized) return;
-    _mobileAdsInitialized = true;
-    unawaited(MobileAds.instance.initialize());
+  static Future<void> _ensureInitialized() async {
+    if (!supported) return;
+    var initialization = _mobileAdsInitialization;
+    if (initialization == null) {
+      initialization = MobileAds.instance.initialize().catchError((
+        Object error,
+      ) {
+        _mobileAdsInitialization = null;
+        throw error;
+      });
+      _mobileAdsInitialization = initialization;
+    }
+    await initialization;
   }
 }
 
@@ -450,6 +481,7 @@ class _AdMobBannerState extends State<AdMobBanner> {
   BannerAd? _bannerAd;
   bool _loaded = false;
   Timer? _retryTimer;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -469,24 +501,49 @@ class _AdMobBannerState extends State<AdMobBanner> {
 
   void _loadBanner() {
     if (!widget.adMob.canShowAds) return;
+    final generation = ++_loadGeneration;
     _retryTimer?.cancel();
     _retryTimer = null;
     _bannerAd?.dispose();
-    _bannerAd = widget.adMob.createBannerAd(
-      onLoaded: () {
-        if (mounted) setState(() => _loaded = true);
-      },
-      onFailed: () {
-        // 初回ロードだけでなく自動更新の失敗でも呼ばれる (広告は破棄済み)。
-        // そのままでは消えたきりになるので、時間をおいて作り直す。
-        _bannerAd = null;
-        if (!mounted) return;
-        setState(() => _loaded = false);
-        _retryTimer = Timer(_retryDelay, () {
-          if (mounted) _loadBanner();
-        });
-      },
-    )..load();
+    _bannerAd = null;
+    _loaded = false;
+    unawaited(_loadBannerAfterInitialization(generation));
+  }
+
+  Future<void> _loadBannerAfterInitialization(int generation) async {
+    try {
+      final ad = await widget.adMob.createBannerAd(
+        onLoaded: () {
+          if (mounted && generation == _loadGeneration) {
+            setState(() => _loaded = true);
+          }
+        },
+        onFailed: () {
+          // 初回ロードだけでなく自動更新の失敗でも呼ばれる (広告は破棄済み)。
+          // そのままでは消えたきりになるので、時間をおいて作り直す。
+          if (!mounted || generation != _loadGeneration) return;
+          _bannerAd = null;
+          setState(() => _loaded = false);
+          _retryTimer = Timer(_retryDelay, () {
+            if (mounted) _loadBanner();
+          });
+        },
+      );
+      if (!mounted ||
+          generation != _loadGeneration ||
+          !widget.adMob.canShowAds) {
+        ad.dispose();
+        return;
+      }
+      _bannerAd = ad;
+      await ad.load();
+    } catch (_) {
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() => _loaded = false);
+      _retryTimer = Timer(_retryDelay, () {
+        if (mounted) _loadBanner();
+      });
+    }
   }
 
   @override
@@ -496,6 +553,7 @@ class _AdMobBannerState extends State<AdMobBanner> {
   }
 
   void _disposeBanner() {
+    _loadGeneration++;
     _retryTimer?.cancel();
     _retryTimer = null;
     _bannerAd?.dispose();
@@ -1337,7 +1395,7 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
     final prefs = await SharedPreferences.getInstance();
     final scores = await ScoreStore.addLocalScore(prefs, entry);
     if (mounted) setState(() => _localScores = scores);
-    if (_scoreSubmitUrl.isNotEmpty) {
+    if (_scoreApiUrl.isNotEmpty) {
       unawaited(_submitScore(entry));
     }
   }
@@ -1620,8 +1678,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   bool _accountAuthAvailable(AccountProvider provider) {
-    return _scoreSubmitUrl.isNotEmpty &&
-        provider == _accountProviderForPlatform;
+    return _scoreApiUrl.isNotEmpty && provider == _accountProviderForPlatform;
   }
 
   IconData _accountProviderIcon(AccountProvider provider) {
@@ -1661,15 +1718,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       _commit(nextSettings);
       _showAccountMessage('${provider.label}でログインしました。');
-    } catch (error) {
-      _showAccountMessage(
-        _isSignInCancellation(error)
-            ? 'ログインをキャンセルしました。'
-            : '${provider.label}でログインできませんでした。',
-      );
+    } catch (error, stackTrace) {
+      _logAccountAuthError(provider, error, stackTrace);
+      _showAccountMessage(_accountAuthErrorMessage(provider, error));
     } finally {
       if (mounted) setState(() => _authenticatingProvider = null);
     }
+  }
+
+  static String _accountAuthErrorMessage(
+    AccountProvider provider,
+    Object error,
+  ) {
+    if (_isSignInCancellation(error)) {
+      return 'ログインをキャンセルしました。';
+    }
+    if (error is GoogleSignInException) {
+      return 'Googleでログインできませんでした。Google OAuth の署名設定を確認してください。';
+    }
+    if (error is SignInWithAppleAuthorizationException) {
+      return switch (error.code) {
+        AuthorizationErrorCode.invalidResponse =>
+          'Appleの認証情報を取得できませんでした。Apple DeveloperのSign in with Apple設定を確認してください。',
+        AuthorizationErrorCode.notInteractive =>
+          'Appleログイン画面を表示できませんでした。もう一度ボタンから操作してください。',
+        _ =>
+          'Appleでログインできませんでした。Sign in with Apple capability とプロビジョニングプロファイルを確認してください。',
+      };
+    }
+    final stateError = _stateErrorMessage(error);
+    if (stateError == 'missing_google_id_token') {
+      return 'Googleの認証情報を取得できませんでした。Google OAuth の設定を確認してください。';
+    }
+    if (stateError == 'missing_apple_identity_token') {
+      return 'Appleの認証情報を取得できませんでした。Apple DeveloperのSign in with Apple設定を確認してください。';
+    }
+    if (stateError == 'apple_sign_in_unavailable' ||
+        '$error'.contains('apple_sign_in_unavailable')) {
+      return 'Appleログインを利用できません。iOS 13以上、Apple ID、Sign in with Apple capabilityを確認してください。';
+    }
+    if (stateError == 'score_submit_url_not_configured') {
+      return 'ランキングサーバー未設定のためログインできません。';
+    }
+    if (stateError == 'invalid_token_audience' ||
+        stateError == 'invalid_token_issuer' ||
+        stateError == 'invalid_id_token') {
+      return '${provider.label}の認証情報をサーバーが拒否しました。bundle ID / OAuth client ID設定を確認してください。';
+    }
+    return '${provider.label}でログインできませんでした。';
+  }
+
+  static String? _stateErrorMessage(Object error) {
+    if (error is! StateError) return null;
+    return error.message;
+  }
+
+  static void _logAccountAuthError(
+    AccountProvider provider,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    if (kReleaseMode) return;
+    debugPrint('${provider.label} sign-in failed: $error');
+    debugPrint('$stackTrace');
   }
 
   static bool _isSignInCancellation(Object error) {
@@ -4772,12 +4883,13 @@ class ScoreStore {
     ScoreboardPeriod period = ScoreboardPeriod.allTime,
     List<ScoreEntry>? cachedOnlineScores,
   }) async {
+    final apiUrl = _scoreApiUrl;
     try {
       final online = await _loadOnline(period);
       return ScoreboardData(
         onlineScores: online.take(maxLeaderboardEntries).toList(),
-        sourceLabel: _scoreSubmitUrl.isEmpty ? '同梱ランキング' : 'オンライン',
-        message: _scoreSubmitUrl.isEmpty
+        sourceLabel: apiUrl.isEmpty ? '同梱ランキング' : 'オンライン',
+        message: apiUrl.isEmpty
             ? 'SCORE_SUBMIT_URL 未設定のため、同梱ランキングを表示しています。'
             : '',
       );
@@ -4835,12 +4947,11 @@ class ScoreStore {
   }
 
   static Future<List<ScoreEntry>> _loadOnline(ScoreboardPeriod period) async {
-    if (_scoreSubmitUrl.isEmpty) {
+    final apiUrl = _scoreApiUrl;
+    if (apiUrl.isEmpty) {
       return _loadBundled();
     }
-    return _loadRemote(
-      _scoreboardUriForPeriod(Uri.parse(_scoreSubmitUrl), period),
-    );
+    return _loadRemote(_scoreboardUriForPeriod(Uri.parse(apiUrl), period));
   }
 
   static Future<List<ScoreEntry>> _loadRemote(Uri uri) async {
@@ -4913,11 +5024,12 @@ class ScoreStore {
   }
 
   static Future<String?> startRankedRun(AppSettings settings) async {
-    if (_scoreSubmitUrl.isEmpty) return null;
+    final apiUrl = _scoreApiUrl;
+    if (apiUrl.isEmpty) return null;
     try {
       final response = await http
           .post(
-            Uri.parse(_scoreSubmitUrl),
+            Uri.parse(apiUrl),
             headers: {'content-type': 'application/json'},
             body: jsonEncode({
               'action': 'startRun',
@@ -4938,13 +5050,14 @@ class ScoreStore {
   }
 
   static Future<List<ScoreEntry>?> submitScore(ScoreEntry entry) async {
-    if (_scoreSubmitUrl.isEmpty) return null;
+    final apiUrl = _scoreApiUrl;
+    if (apiUrl.isEmpty) return null;
     final token = entry.runToken;
     if (token == null || token.isEmpty) return null;
     try {
       final response = await http
           .post(
-            Uri.parse(_scoreSubmitUrl),
+            Uri.parse(apiUrl),
             headers: {'content-type': 'application/json'},
             body: jsonEncode(entry.toJson()),
           )
@@ -4984,12 +5097,13 @@ class ScoreStore {
   static Future<Map<String, dynamic>> _postAction(
     Map<String, Object> body,
   ) async {
-    if (_scoreSubmitUrl.isEmpty) {
+    final apiUrl = _scoreApiUrl;
+    if (apiUrl.isEmpty) {
       throw StateError('score_submit_url_not_configured');
     }
     final response = await http
         .post(
-          Uri.parse(_scoreSubmitUrl),
+          Uri.parse(apiUrl),
           headers: {'content-type': 'application/json'},
           body: jsonEncode(body),
         )

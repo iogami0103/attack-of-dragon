@@ -15,7 +15,7 @@ git commit -m "変更内容"
 git push
 ```
 
-ビルド成果物、Flutter/CocoaPods の生成物、署名鍵、ローカル設定はコミットしません。
+ビルド成果物、Flutter/CocoaPods の生成物、署名鍵、ローカル設定はコミットしません。`android/key.properties.example` と `server/score-submit-worker/wrangler.toml.example` をコピーし、各自のローカル環境で実値を入れてください。
 
 ## 実行
 
@@ -38,9 +38,9 @@ C:\Users\iogam\bin\rtk.exe python -m http.server 8080 --bind 127.0.0.1 -d build\
 
 ## オンラインスコア
 
-オンラインランキングは Cloudflare Worker と D1 だけで提供します。クライアントには D1 の認証情報を埋め込まず、公開可能な Worker URL だけを持たせます。リリースビルドでは本番 Worker URL がデフォルトで入るため、`SCORE_SUBMIT_URL` の指定は不要です。
+オンラインランキングは Cloudflare Worker と D1 だけで提供します。クライアントには D1 の認証情報を埋め込まず、公開可能な Worker URL だけを持たせます。リリースビルドとモバイルのデバッグ実行では本番 Worker URL がデフォルトで入るため、`SCORE_SUBMIT_URL` の指定は不要です。Web/デスクトップのデバッグ実行は未指定時に同梱ランキングへフォールバックします。
 
-デバッグビルドや検証用 Worker に接続する場合だけ、必要に応じて `SCORE_SUBMIT_URL` を指定します。
+検証用 Worker に接続する場合や、Web/デスクトップのデバッグ実行でオンライン機能を試す場合だけ、必要に応じて `SCORE_SUBMIT_URL` を指定します。
 
 ```powershell
 C:\Users\iogam\bin\rtk.exe flutter run -d chrome --dart-define=SCORE_SUBMIT_URL=https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev
