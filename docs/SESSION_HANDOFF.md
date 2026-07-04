@@ -38,6 +38,17 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-04 Device: Windows / AI: Codex — Google アカウント変更ボタンも削除
+
+- Branch: `main`
+- PR: 未作成
+- やったこと:
+  - 設定画面のログイン済み状態から「Googleアカウントを変更」ボタンも削除し、アカウント切り替え導線を出さないように統一
+  - Google ログイン済み状態の widget test を更新し、変更ボタンが表示されないことを確認
+  - `flutter analyze` と `flutter test` は通過
+- 次のセッションへの申し送り:
+  - 設定画面ではログイン済み表示とログアウトのみが出る想定。実機で表示確認するとよい
+
 ## 2026-07-04 Device: Windows / AI: Codex — 設定画面の Apple ボタンと SafeArea を調整
 
 - Branch: `main`

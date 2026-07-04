@@ -1930,23 +1930,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     onPressed: null,
                                   ),
                                   const SizedBox(height: 10),
-                                  if (accountProvider !=
-                                      AccountProvider.apple) ...[
-                                    _FantasyButton(
-                                      icon: _accountProviderIcon(
-                                        accountProvider,
-                                      ),
-                                      label: '${accountProvider.label}アカウントを変更',
-                                      tone: _FantasyButtonTone.quiet,
-                                      height: 46,
-                                      onPressed: _accountBusy
-                                          ? null
-                                          : () => _authenticateProvider(
-                                              accountProvider,
-                                            ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                  ],
                                   _FantasyButton(
                                     icon: Icons.logout_rounded,
                                     label: 'ログアウト',

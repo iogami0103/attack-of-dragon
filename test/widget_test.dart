@@ -513,7 +513,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Googleでログイン済み'), findsOneWidget);
-      expect(find.text('Googleアカウントを変更'), findsOneWidget);
+      expect(find.text('Googleアカウントを変更'), findsNothing);
       expect(find.text('Googleでログイン'), findsNothing);
     } finally {
       debugDefaultTargetPlatformOverride = null;
