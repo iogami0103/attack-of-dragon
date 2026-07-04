@@ -38,6 +38,22 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-04 Device: Windows / AI: Claude — Googleログイン修復と Apple 提出準備 (App ID/ASC/IAP)
+
+- Branch: `main` (ユーザー指示で直接コミット)
+- PR: 未作成 (コミット `484f229` + このログ追記)
+- やったこと:
+  - 実機で Google ログイン不可の原因を特定: リリースAPKの署名が upload 鍵 (2026-07-04 作成) に変わったが、Google OAuth にはデバッグ鍵 SHA-1 しか未登録だった。Google Cloud (Gemini Project) に Android クライアント「Attack of the Dragon Android Upload」を作成し解消。実機でログインとランキング (playerId) 復元を確認済み
+  - Apple Developer (チーム TATSUYA ASANO / 95RP2F687Q): bundle ID `io.github.iogami0103.attackofthedragon` は Xcode 自動生成 App ID として既存で、Sign In with Apple (primary) も有効化済みだったことを確認。新規登録時の「not available」エラーはこの重複が原因 (別チーム所有ではない)
+  - App Store Connect にアプリ「Attack of the Dragon」(Apple ID 6787345039, SKU `attackofthedragon`, 日本語) を作成し、非消耗型 IAP `remove_ads` を基準価格 日本 ¥300 + 日本語ローカリゼーション「広告削除」で作成
+  - 誤認で一時作成した `com.tatsuya.attackofthedragon` App ID は削除し、リポジトリ/Worker の一時変更も全て `io.github...` に巻き戻し済み (Worker 現行 Version `fb85b23d`)
+- 次のセッションへの申し送り (特に Mac/iPhone 検証):
+  - Xcode の署名チームは TATSUYA ASANO (95RP2F687Q)。bundle ID は変更なし。provisioning は自動署名に任せれば OK
+  - iPhone で Apple ログイン → playerId 復元を確認したら RELEASE_CHECKLIST に反映すること
+  - TestFlight 提出前に Account Holder が ASC で更新された使用許諾契約に同意する必要あり (2026-07-04 時点で未同意バナーあり)
+  - IAP の審査用スクリーンショットは初回バージョン提出時に添付が必要
+  - Google Auth Platform の公開ステータスは「テスト中」のまま (公開前に要変更、GAME_SPEC 16章)。Play App Signing 導入時は Play 署名鍵 SHA-1 の追加登録も必要
+
 ## 2026-07-04 Device: Windows / AI: Codex — 複数端末セッション共有の運用を明文化
 
 - Branch: `main`
