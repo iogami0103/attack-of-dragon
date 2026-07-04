@@ -35,6 +35,45 @@ fail() {
   EXIT_CODE=1
 }
 
+update_from_github() {
+  if [ "${SKIP_GIT_PULL:-}" = "1" ]; then
+    echo "Skipping GitHub update because SKIP_GIT_PULL is set."
+    return 0
+  fi
+
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Git repository was not found. Skipping GitHub update."
+    return 0
+  fi
+
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "ERROR: Local changes exist. Commit or discard them before installing."
+    echo
+    git status --short
+    return 1
+  fi
+
+  if ! git remote get-url origin >/dev/null 2>&1; then
+    echo "Git remote 'origin' was not found. Skipping GitHub update."
+    return 0
+  fi
+
+  echo "Updating project from GitHub..."
+  git fetch origin || return 1
+
+  CURRENT_BRANCH="$(git branch --show-current)"
+  if [ -z "$CURRENT_BRANCH" ]; then
+    echo "ERROR: Could not determine the current Git branch."
+    return 1
+  fi
+
+  if git rev-parse --verify "origin/$CURRENT_BRANCH" >/dev/null 2>&1; then
+    git merge --ff-only "origin/$CURRENT_BRANCH" || return 1
+  else
+    git pull --ff-only || return 1
+  fi
+}
+
 confirm_iphone_unlocked() {
   if [ "${NO_PAUSE:-}" = "1" ] || [ "${SKIP_INSTALL_PROMPT:-}" = "1" ]; then
     return 0
@@ -182,6 +221,8 @@ echo "Device:  $DEVICE_ID"
 echo
 echo "Keep the iPhone unlocked until the install finishes."
 echo
+
+update_from_github || fail "Could not update the project from GitHub."
 
 mkdir -p "$CACHE_ROOT" || fail "Could not create the iOS install cache directory."
 
