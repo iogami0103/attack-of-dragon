@@ -38,6 +38,17 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-04 Device: Windows / AI: Codex — 起動コマンドのローカル差分停止を回避
+
+- Branch: `main`
+- PR: 未作成
+- やったこと:
+  - `進撃のドラゴン PC 起動.cmd` と `進撃のドラゴン Android 起動.cmd` を、ローカル差分がある場合に停止せず GitHub 更新だけスキップしてローカル作業ツリーをビルド/インストールするよう変更。
+  - PC 通常版は `NO_LAUNCH=1` でビルドまで成功、Android 通常版は `192.168.1.6:5555` にリリース APK をインストールして起動成功。
+  - `flutter analyze` と `flutter test` は成功。
+- 次のセッションへの申し送り:
+  - 通常版 `.cmd` はローカル差分なしなら GitHub 更新後に起動、差分ありならローカル版として起動する挙動になっている。
+
 ## 2026-07-04 Device: Windows / AI: Codex — Google アカウント変更ボタンも削除
 
 - Branch: `main`

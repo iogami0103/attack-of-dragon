@@ -92,27 +92,23 @@ for /f "delims=" %%A in ('"%RTK%" git status --porcelain --untracked-files=all')
 )
 
 if defined LOCAL_CHANGES (
-  set "EXIT_CODE=1"
   echo Local changes were found.
-  echo Commit, stash, or remove local changes before installing the GitHub version.
-  echo To install the local working tree, run:
-  echo   進撃のドラゴン Android ローカル起動.cmd
-  goto cleanup
-)
+  echo Skipping GitHub update and installing the local working tree.
+) else (
+  echo Updating from GitHub...
+  "%RTK%" git fetch --prune origin
+  if errorlevel 1 (
+    set "EXIT_CODE=1"
+    echo git fetch failed.
+    goto cleanup
+  )
 
-echo Updating from GitHub...
-"%RTK%" git fetch --prune origin
-if errorlevel 1 (
-  set "EXIT_CODE=1"
-  echo git fetch failed.
-  goto cleanup
-)
-
-"%RTK%" git pull --ff-only
-if errorlevel 1 (
-  set "EXIT_CODE=1"
-  echo git pull failed. Resolve update conflicts, then run this file again.
-  goto cleanup
+  "%RTK%" git pull --ff-only
+  if errorlevel 1 (
+    set "EXIT_CODE=1"
+    echo git pull failed. Resolve update conflicts, then run this file again.
+    goto cleanup
+  )
 )
 
 echo Installing Attack of the Dragon on %TARGET_SERIAL%...
