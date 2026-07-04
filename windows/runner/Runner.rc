@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "Attack of Dragon" "\0"
+            VALUE "CompanyName", "Attack of the Dragon" "\0"
+            VALUE "FileDescription", "Attack of the Dragon" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "shingeki_dragon" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "shingeki_dragon.exe" "\0"
-            VALUE "ProductName", "Attack of Dragon" "\0"
+            VALUE "InternalName", "attack_of_the_dragon" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Attack of the Dragon. All rights reserved." "\0"
+            VALUE "OriginalFilename", "attack_of_the_dragon.exe" "\0"
+            VALUE "ProductName", "Attack of the Dragon" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

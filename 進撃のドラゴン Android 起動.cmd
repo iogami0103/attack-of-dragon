@@ -1,17 +1,16 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 
 set "SOURCE_DIR=%~dp0"
-set "PROJECT_DIR=D:\attack_of_dragon_release"
 set "RTK=C:\Users\iogam\bin\rtk.exe"
-set "PACKAGE_NAME=com.example.shingeki_dragon"
-set "LEADERBOARD_URL=https://iogami0103.github.io/attack-of-dragon/scores/leaderboard.json"
-set "SCORE_SUBMIT_URL=https://attack-of-dragon-score-submit.i-ogami-0103.workers.dev"
+if not defined PACKAGE_NAME set "PACKAGE_NAME=io.github.iogami0103.attackofthedragon"
 set "USB_SERIAL=2A271FDH300GLX"
 set "DEVICE_IP=192.168.1.6"
 set "ADB_PORT=5555"
 set "NETWORK_SERIAL=%DEVICE_IP%:%ADB_PORT%"
 set "TARGET_SERIAL="
+set "APK_PATH=build\app\outputs\flutter-apk\app-release.apk"
+set "EXIT_CODE=0"
 
 if not exist "%RTK%" (
   echo rtk.exe was not found:
@@ -20,7 +19,7 @@ if not exist "%RTK%" (
   exit /b 1
 )
 
-if not exist "%SOURCE_DIR%\pubspec.yaml" (
+if not exist "%SOURCE_DIR%pubspec.yaml" (
   echo Flutter project was not found:
   echo   %SOURCE_DIR%
   pause
@@ -79,47 +78,58 @@ if not defined TARGET_SERIAL (
   exit /b 1
 )
 
-if not exist "%PROJECT_DIR%" mkdir "%PROJECT_DIR%"
-echo Syncing source files...
-robocopy "%SOURCE_DIR%" "%PROJECT_DIR%" /E /XD .dart_tool build .git .idea artifacts /XF *.iml >nul
-if errorlevel 8 (
-  echo Source sync failed.
+cd /d "%SOURCE_DIR%"
+if errorlevel 1 (
+  echo Failed to enter project directory:
+  echo   %SOURCE_DIR%
   pause
   exit /b 1
 )
 
-cd /d "%PROJECT_DIR%"
-echo Installing Attack of Dragon on %TARGET_SERIAL%...
+echo Installing Attack of the Dragon on %TARGET_SERIAL%...
 "%RTK%" flutter pub get
 if errorlevel 1 (
+  set "EXIT_CODE=1"
   echo flutter pub get failed.
-  pause
-  exit /b 1
+  goto cleanup
 )
 
-"%RTK%" flutter build apk --release --dart-define=LEADERBOARD_URL=%LEADERBOARD_URL% --dart-define=SCORE_SUBMIT_URL=%SCORE_SUBMIT_URL%
+"%RTK%" flutter build apk --release
 if errorlevel 1 (
+  set "EXIT_CODE=1"
   echo flutter build apk failed.
-  pause
-  exit /b 1
+  goto cleanup
 )
 
-"%RTK%" adb -s %TARGET_SERIAL% install -r "build\app\outputs\flutter-apk\app-release.apk"
+if not exist "%APK_PATH%" (
+  set "EXIT_CODE=1"
+  echo Android APK was not found:
+  echo   %SOURCE_DIR%%APK_PATH%
+  goto cleanup
+)
+
+"%RTK%" adb -s %TARGET_SERIAL% install -r "%APK_PATH%"
 if errorlevel 1 (
+  set "EXIT_CODE=1"
   echo adb install failed.
-  pause
-  exit /b 1
+  goto cleanup
 )
 
-echo Starting Attack of Dragon...
-"%RTK%" adb -s %TARGET_SERIAL% shell monkey -p %PACKAGE_NAME% -c android.intent.category.LAUNCHER 1
+echo Starting Attack of the Dragon...
+rem monkey is not used here: it force-enables system auto-rotate on exit (thawRotation)
+"%RTK%" adb -s %TARGET_SERIAL% shell am start -n %PACKAGE_NAME%/.MainActivity
 if errorlevel 1 (
+  set "EXIT_CODE=1"
   echo App was installed, but launch failed.
-  pause
-  exit /b 1
+  goto cleanup
 )
 
 echo Done.
-if not defined NO_PAUSE pause
+:cleanup
+if not "%EXIT_CODE%"=="0" (
+  pause
+  exit /b %EXIT_CODE%
+)
 
-endlocal
+if not defined NO_PAUSE pause
+exit /b 0

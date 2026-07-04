@@ -1,4 +1,4 @@
-# Attack of Dragon 仕様書 v0.1
+# Attack of the Dragon 仕様書 v0.1
 
 作成日: 2026-07-01
 
@@ -66,10 +66,10 @@
 
 ### 5.2.1 オンラインスコアボード
 
-- スコアは GitHub 上で公開し、オンラインで共有できるようにする
-- スコアボード画面は GitHub Pages または GitHub 上の公開 JSON を読み込んで表示する
+- スコアは Cloudflare D1 に保存し、Cloudflare Worker 経由でオンライン共有できるようにする
+- スコアボード画面は Cloudflare Worker のランキングAPIを読み込んで表示する
 - オンラインランキングは最大1万位まで閲覧できるようにする
-- 想定データファイル: `scores/leaderboard.json`
+- 同梱フォールバックデータ: `assets/data/leaderboard.json`
 - 保存する項目:
   - プレイヤー名
   - 距離スコア
@@ -83,8 +83,15 @@
 - 初回起動時のプレイヤー名は `Dragon00000000` 形式で、8桁の数字部分をランダム生成する
 - プレイヤー名には制御文字、改行、URL、HTMLタグを使えない
 - ローカル端末には自己ベストと直近スコアを保存し、オンライン取得に失敗した場合はローカル表示にフォールバックする
-- ゲームクライアントには GitHub の書き込みトークンを埋め込まない
-- スコア投稿は、GitHub API を直接クライアントから叩くのではなく、別途用意する安全な投稿エンドポイントから GitHub の `leaderboard.json` を更新する
+- ゲームクライアントにはデータベースの認証情報を埋め込まない
+- ゲームクライアントには D1 の認証情報や管理キーを埋め込まず、公開可能な Cloudflare Worker のURLだけを埋め込む
+- オンラインランキングの接続先は `SCORE_SUBMIT_URL` としてアプリに埋め込む
+- `SCORE_SUBMIT_URL` はスコア投稿だけでなく、オンラインランキング取得、ラン開始トークン発行、アカウント認証連携にも使用する
+- 本番 Worker URL は公開されてもよい情報としてソースコードに持たせ、リリースビルド時のデフォルト値として使用する
+- 通常のリリースビルドでは `--dart-define` 指定を不要にする
+- デバッグビルドやテストでは未指定時の `SCORE_SUBMIT_URL` は空とし、オンライン接続したい場合や開発用、検証用の Worker を使う場合だけ `--dart-define=SCORE_SUBMIT_URL=...` で上書きする
+- `SCORE_SUBMIT_URL` を明示的に空にした場合、オンライン投稿とラン開始トークン取得は行わず、同梱ランキングまたはローカルスコア表示へフォールバックする
+- スコア投稿は Cloudflare Worker へ送信し、Worker が D1 を更新する
 - MVPで投稿エンドポイントをまだ用意しない場合は、オンラインスコアボードは読み取り専用として始める
 
 ### 5.3 開始フロー
@@ -263,7 +270,7 @@ v0.1では5種類を実装候補とする。
 - 表示・構成はスイカゲームのスコアボードと同じ見せ方にする
 - ベストスコア
 - 過去プレイの上位スコア
-- GitHub から取得したオンラインランキング
+- Cloudflare D1 から取得したオンラインランキング
 - オンラインランキングとローカルランキングを切り替えて表示できるようにする
 - 期間は `今日`、`週間`、`月間`、`全期間` で切り替えられるようにする
 - オンラインランキングは1万位まで見られるようにし、ページングまたは仮想スクロールで表示する
@@ -393,26 +400,18 @@ v0.1では5種類を実装候補とする。
 - `D:\Documents\ActionMaker-Steam\scripts\core\audio_manager.gd`
 - `D:\Documents\ActionMaker-Steam\ASSET_CREDITS.md`
 
-候補:
+効果音は以下の2種類だけに限定する。これ以外の効果音素材と再生コードは持たない。
 
-| 用途 | 候補ファイル | 備考 |
+| 用途 | 実ファイル | 備考 |
 | --- | --- | --- |
-| UI決定 | `third_party/youfulca/sfx/ui_accept.ogg` | スタート、設定、スコアボード選択 |
-| UI戻る | `third_party/youfulca/sfx/ui_cancel.ogg` | タイトルへ戻る |
-| UIエラー | `third_party/youfulca/sfx/ui_error.ogg` | 通信失敗など |
-| ゲーム開始 | `third_party/youfulca/jingle/8bit_game_start.ogg` | タップして開始した瞬間 |
-| タップ上昇 | `third_party/youfulca/sfx/player_jump.ogg` | 必要なら音量を小さくして短く使う |
-| 羽ばたき補助 | `third_party/soundeffect_lab/yoshi_flutter.mp3` | タップ音が軽すぎる場合の候補 |
-| 炎発射 | `third_party/youfulca/sfx/fireball.ogg` | 自動炎攻撃 |
-| 炎命中 | `third_party/youfulca/sfx/enemy_stomp.ogg` | 小型敵の撃破にも使える |
-| 爆発・撃破 | `third_party/youfulca/sfx/explosion.ogg` | 高耐久敵の撃破や派手な命中 |
-| プレイヤー被弾 | `third_party/youfulca/sfx/player_damage.ogg` | ゲームオーバー直前 |
-| 敵の予兆 | `third_party/soundeffect_lab/enemy_charge.mp3` | メイジ攻撃や危険パターン前 |
-| タイトルBGM | `third_party/youfulca/bgm/8bit/8bit_act01_title_loop.ogg` | 既存 AudioManager の `music_title` |
-| プレイBGM | `third_party/youfulca/bgm/field/Sky_Airship_loop.ogg` | 空中飛行テーマの第一候補 |
-| ゲームオーバー | `third_party/youfulca/bgm/me/GameOver_ME.ogg` | リザルト遷移時 |
+| ドラゴン火炎 | `assets/audio/dragon_fire_flame_pip.wav` | ドラゴンが火を噴く瞬間のみ |
+| 敵破裂 | `assets/audio/enemy_explosion_ultimate_snap_boom_007.ogg` / `assets/audio/enemy_explosion_ultimate_snap_boom_007.wav` | 敵を倒して破裂した瞬間のみ |
 
-ライセンス・クレジットは ActionMaker-Steam の `ASSET_CREDITS.md` を引き継いで管理する。リリース前に配布条件を再確認し、必要なクレジットをゲーム内または配布ページに記載する。
+| 用途 | 実ファイル | 備考 |
+| --- | --- | --- |
+| プレイBGM | `assets/audio/game_bgm.ogg` / `assets/audio/game_bgm.mp3` | プレイ中BGM |
+
+ライセンス・クレジットは ActionMaker-Steam の `ASSET_CREDITS.md` を引き継いで管理する。リリース用のクレジットは設定画面と README に記載する。
 
 ## 12. 画像生成方針
 
@@ -442,7 +441,7 @@ v0.1で作る範囲:
 - タップ上昇、重力下降
 - 天井・落下・敵接触・弾接触による即死
 - 距離スコア
-- GitHub 連携のオンラインスコアボード
+- Cloudflare D1 連携のオンラインスコアボード
 - 自動炎攻撃
 - 敵5種類
 - 敵パターン8種類程度
@@ -450,6 +449,8 @@ v0.1で作る範囲:
 - 主人公の羽ばたきアニメ
 - ActionMaker-Steam 由来の背景表示
 - ActionMaker-Steam 由来の効果音・BGM
+- Google Mobile Ads のバナー広告とリトライ時インターステシャル
+- 非消耗型 IAP `remove_ads` による広告削除
 
 v0.1では入れない:
 
@@ -461,7 +462,6 @@ v0.1では入れない:
 - 手動攻撃
 - ボス
 - 育成・強化
-- 課金・広告
 
 ## 14. 未決定事項
 
@@ -478,10 +478,16 @@ v0.1では入れない:
    - 高危険度パターンの連続禁止
    - 出現直後の接触禁止距離
 5. 画面比率ごとの安全領域
-6. GitHub スコア投稿用の安全な投稿エンドポイント方式
+6. Cloudflare D1 スコア投稿API方式
 
 ## 15. 次回確認したい質問
 
 1. 操作感の数値を実機プレイで調整する。
-2. GitHub スコア投稿用の安全な投稿エンドポイント方式を決める。
+2. Cloudflare D1 スコア投稿APIを本番環境へ適用する。
 3. 竜・敵・炎アセットの見た目をプレイ画面で確認し、必要なら再生成する。
+
+## 16. リリース前タスク
+
+- Google Auth Platform の公開ステータスを「テスト中」から公開に変更する。
+- Android 配布用の Google OAuth クライアントを追加し、Google Play App Signing またはリリース keystore の SHA-1 を登録する。
+- Apple Developer で bundle ID `io.github.iogami0103.attackofthedragon` の `Sign in with Apple` capability を有効化し、iOS の provisioning profile を更新する。

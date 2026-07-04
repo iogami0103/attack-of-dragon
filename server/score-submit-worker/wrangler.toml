@@ -1,0 +1,15 @@
+name = "attack-of-the-dragon-score-submit"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+account_id = "0d3289ec461360cc3668813f7c864abb"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "attack-of-the-dragon-scores"
+database_id = "66e37969-6506-414c-aa4a-aeaf0f3c6607"
+migrations_dir = "migrations"
+
+[vars]
+ALLOWED_ORIGIN = "https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev"
+GOOGLE_CLIENT_IDS = "472691784297-l323hbj6cm13ulsn8ul8cvvge956vedf.apps.googleusercontent.com,472691784297-hnide0eeomerg906ir2jf0884gu5s0cd.apps.googleusercontent.com"
+APPLE_CLIENT_IDS = "io.github.iogami0103.attackofthedragon"

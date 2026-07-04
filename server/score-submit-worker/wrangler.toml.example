@@ -1,10 +1,14 @@
-name = "attack-of-dragon-score-submit"
+name = "attack-of-the-dragon-score-submit"
 main = "worker.js"
 compatibility_date = "2026-07-01"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "attack-of-the-dragon-scores"
+database_id = "replace-with-d1-database-id"
+migrations_dir = "migrations"
+
 [vars]
-GITHUB_OWNER = "your-github-owner"
-GITHUB_REPO = "your-repo-name"
-GITHUB_BRANCH = "main"
-LEADERBOARD_PATH = "scores/leaderboard.json"
-ALLOWED_ORIGIN = "https://your-github-owner.github.io"
+ALLOWED_ORIGIN = "https://your-cloudflare-pages-or-custom-domain.example"
+GOOGLE_CLIENT_IDS = "your-google-oauth-client-id.apps.googleusercontent.com"
+APPLE_CLIENT_IDS = "io.github.iogami0103.attackofthedragon"

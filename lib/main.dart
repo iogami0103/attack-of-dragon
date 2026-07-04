@@ -4,19 +4,85 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:audio_session/audio_session.dart' as audio_session;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
-const _leaderboardUrl = String.fromEnvironment('LEADERBOARD_URL');
-const _scoreSubmitUrl = String.fromEnvironment('SCORE_SUBMIT_URL');
+import 'audio_cache.dart';
+import 'audio_source.dart';
+
+const _scoreSubmitUrl = String.fromEnvironment(
+  'SCORE_SUBMIT_URL',
+  defaultValue: kReleaseMode
+      ? 'https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev'
+      : '',
+);
+const _adMobEnabled = bool.fromEnvironment('ADMOB_ENABLED', defaultValue: true);
+const _adMobUseTestIds = bool.fromEnvironment(
+  'ADMOB_USE_TEST_IDS',
+  defaultValue: !kReleaseMode,
+);
+const _adMobAndroidBannerUnitId = String.fromEnvironment(
+  'ADMOB_ANDROID_BANNER_UNIT_ID',
+  defaultValue: 'ca-app-pub-9107759780289476/4502022797',
+);
+const _adMobAndroidInterstitialUnitId = String.fromEnvironment(
+  'ADMOB_ANDROID_INTERSTITIAL_UNIT_ID',
+  defaultValue: 'ca-app-pub-9107759780289476/3188941125',
+);
+const _adMobIosBannerUnitId = String.fromEnvironment(
+  'ADMOB_IOS_BANNER_UNIT_ID',
+  defaultValue: 'ca-app-pub-9107759780289476/6874024949',
+);
+const _adMobIosInterstitialUnitId = String.fromEnvironment(
+  'ADMOB_IOS_INTERSTITIAL_UNIT_ID',
+  defaultValue: 'ca-app-pub-9107759780289476/9562777787',
+);
+const _adMobAndroidTestBannerUnitId = String.fromEnvironment(
+  'ADMOB_ANDROID_TEST_BANNER_UNIT_ID',
+  defaultValue: 'ca-app-pub-3940256099942544/6300978111',
+);
+const _adMobAndroidTestInterstitialUnitId = String.fromEnvironment(
+  'ADMOB_ANDROID_TEST_INTERSTITIAL_UNIT_ID',
+  defaultValue: 'ca-app-pub-3940256099942544/1033173712',
+);
+const _adMobIosTestBannerUnitId = String.fromEnvironment(
+  'ADMOB_IOS_TEST_BANNER_UNIT_ID',
+  defaultValue: 'ca-app-pub-3940256099942544/2934735716',
+);
+const _adMobIosTestInterstitialUnitId = String.fromEnvironment(
+  'ADMOB_IOS_TEST_INTERSTITIAL_UNIT_ID',
+  defaultValue: 'ca-app-pub-3940256099942544/4411468910',
+);
+const _removeAdsProductId = String.fromEnvironment(
+  'REMOVE_ADS_PRODUCT_ID',
+  defaultValue: 'remove_ads',
+);
+const _removeAdsReferencePriceLabel = '¥300';
+const _googleClientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
+const _googleServerClientId = String.fromEnvironment(
+  'GOOGLE_SERVER_CLIENT_ID',
+  defaultValue:
+      '472691784297-l323hbj6cm13ulsn8ul8cvvge956vedf.apps.googleusercontent.com',
+);
 const _gameVersion = '1.0.0';
-const _gameBgmIntroFile = 'game_bgm_intro.flac';
-const _gameBgmLoopFile = 'game_bgm_loop.flac';
+const _gameBgmIntroFile = 'game_bgm_intro.ogg';
+const _gameBgmLoopFile = 'game_bgm_loop.ogg';
+const _dragonFireSfxFile = 'dragon_fire_flame_pip.wav';
+const _enemyBurstSfxFile = 'enemy_explosion_ultimate_snap_boom_007.ogg';
+const _dragonFireSfxVolumeScale = 0.18;
+const _enemyBurstSfxVolumeScale = 0.14;
+const _interstitialRetryPlayTime = Duration(minutes: 3);
+const _preloadedSfxFiles = <String>[_dragonFireSfxFile, _enemyBurstSfxFile];
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,8 +95,12 @@ class DragonApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xffe6652a),
+      brightness: Brightness.light,
+    );
     return MaterialApp(
-      title: 'Attack of Dragon',
+      title: 'Attack of the Dragon',
       debugShowCheckedModeBanner: false,
       locale: const Locale('ja', 'JP'),
       supportedLocales: const [Locale('ja', 'JP')],
@@ -40,10 +110,9 @@ class DragonApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
       ],
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xffe6652a),
-          brightness: Brightness.light,
-        ),
+        colorScheme: colorScheme,
+        scaffoldBackgroundColor: const Color(0xfffff3df),
+        fontFamily: 'MPLUSRounded1c',
         fontFamilyFallback: const [
           'Noto Sans CJK JP',
           'Noto Sans JP',
@@ -54,82 +123,1061 @@ class DragonApp extends StatelessWidget {
           'BIZ UDGothic',
           'sans-serif',
         ],
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.72),
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xff7c4a2d),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: const Color(0xff8f3b19).withValues(alpha: 0.22),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: const Color(0xff8f3b19).withValues(alpha: 0.22),
+            ),
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            borderSide: BorderSide(color: Color(0xffdc6327), width: 2),
+          ),
+        ),
+        sliderTheme: SliderThemeData(
+          activeTrackColor: const Color(0xffe6682b),
+          inactiveTrackColor: const Color(0xff7b381c).withValues(alpha: 0.18),
+          thumbColor: const Color(0xffffb643),
+          overlayColor: const Color(0xffffb643).withValues(alpha: 0.18),
+        ),
+        segmentedButtonTheme: SegmentedButtonThemeData(
+          style: ButtonStyle(
+            backgroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return const Color(0xff7b381c);
+              }
+              return Colors.white.withValues(alpha: 0.58);
+            }),
+            foregroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return Colors.white;
+              }
+              return const Color(0xff5a2815);
+            }),
+            side: WidgetStateProperty.all(
+              BorderSide(
+                color: const Color(0xff7b381c).withValues(alpha: 0.22),
+              ),
+            ),
+            shape: WidgetStateProperty.all(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: ButtonStyle(
+            minimumSize: WidgetStateProperty.all(const Size.fromHeight(50)),
+            shape: WidgetStateProperty.all(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            textStyle: WidgetStateProperty.all(
+              const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            ),
+            elevation: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.disabled)) return 0;
+              return 4;
+            }),
+            backgroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.disabled)) {
+                return _UiColors.ember.withValues(alpha: 0.28);
+              }
+              return _UiColors.flame;
+            }),
+            foregroundColor: WidgetStateProperty.all(Colors.white),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: ButtonStyle(
+            minimumSize: WidgetStateProperty.all(const Size.fromHeight(48)),
+            shape: WidgetStateProperty.all(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            textStyle: WidgetStateProperty.all(
+              const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+            ),
+            side: WidgetStateProperty.resolveWith((states) {
+              final alpha = states.contains(WidgetState.disabled) ? 0.12 : 0.34;
+              return BorderSide(
+                color: _UiColors.ember.withValues(alpha: alpha),
+              );
+            }),
+            foregroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.disabled)) {
+                return _UiColors.ink.withValues(alpha: 0.38);
+              }
+              return _UiColors.ink;
+            }),
+            backgroundColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.disabled)) {
+                return Colors.white.withValues(alpha: 0.28);
+              }
+              return Colors.white.withValues(alpha: 0.48);
+            }),
+          ),
+        ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xff3f2116),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: _UiColors.gold.withValues(alpha: 0.4)),
+          ),
+          contentTextStyle: const TextStyle(
+            fontFamily: 'MPLUSRounded1c',
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         useMaterial3: true,
       ),
-      home: const _PortraitOnly(child: DragonShell()),
+      home: const DragonShell(),
     );
   }
 }
 
-class _PortraitOnly extends StatelessWidget {
-  const _PortraitOnly({required this.child});
+class _UiColors {
+  const _UiColors._();
 
-  final Widget child;
+  static const ink = Color(0xff2f1a13);
+  static const ember = Color(0xffa8421d);
+  static const flame = Color(0xffe7682b);
+  static const gold = Color(0xffffb13b);
+  static const deepGold = Color(0xffb9711b);
+  static const paper = Color(0xfffff6e8);
+  static const paperWarm = Color(0xffffe4c4);
+  static const teal = Color(0xff1b8f8a);
+}
 
-  @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    if (size.width <= size.height) {
-      return child;
+class AdMobService {
+  AdMobService();
+
+  static bool _mobileAdsInitialized = false;
+
+  InterstitialAd? _interstitialAd;
+  bool _interstitialLoading = false;
+  bool _interstitialShowing = false;
+  bool _adsRemoved = false;
+
+  static bool get supported {
+    if (!_adMobEnabled || kIsWeb) return false;
+    if (WidgetsBinding.instance.runtimeType.toString().contains(
+      'TestWidgetsFlutterBinding',
+    )) {
+      return false;
     }
-    return const _LandscapeBlockedScreen();
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
+  }
+
+  bool get adsRemoved => _adsRemoved;
+
+  bool get canShowAds => supported && !_adsRemoved;
+
+  double get bannerHeight => canShowAds ? AdSize.banner.height.toDouble() : 0;
+
+  bool get isInterstitialReady => canShowAds && _interstitialAd != null;
+
+  String get _bannerAdUnitId {
+    if (_adMobUseTestIds) {
+      return switch (defaultTargetPlatform) {
+        TargetPlatform.android => _adMobAndroidTestBannerUnitId,
+        TargetPlatform.iOS => _adMobIosTestBannerUnitId,
+        _ => '',
+      };
+    }
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android => _adMobAndroidBannerUnitId,
+      TargetPlatform.iOS => _adMobIosBannerUnitId,
+      _ => '',
+    };
+  }
+
+  String get _interstitialAdUnitId {
+    if (_adMobUseTestIds) {
+      return switch (defaultTargetPlatform) {
+        TargetPlatform.android => _adMobAndroidTestInterstitialUnitId,
+        TargetPlatform.iOS => _adMobIosTestInterstitialUnitId,
+        _ => '',
+      };
+    }
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android => _adMobAndroidInterstitialUnitId,
+      TargetPlatform.iOS => _adMobIosInterstitialUnitId,
+      _ => '',
+    };
+  }
+
+  void setAdsRemoved(bool value) {
+    if (_adsRemoved == value) {
+      if (!_adsRemoved) warmUp();
+      return;
+    }
+    _adsRemoved = value;
+    if (_adsRemoved) {
+      dispose();
+      return;
+    }
+    warmUp();
+  }
+
+  void warmUp() {
+    if (!canShowAds) return;
+    _ensureInitialized();
+    _loadInterstitial();
+  }
+
+  BannerAd createBannerAd({
+    required VoidCallback onLoaded,
+    required VoidCallback onFailed,
+  }) {
+    _ensureInitialized();
+    return BannerAd(
+      size: AdSize.banner,
+      adUnitId: _bannerAdUnitId,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (_) => onLoaded(),
+        onAdFailedToLoad: (ad, _) {
+          ad.dispose();
+          onFailed();
+        },
+      ),
+    );
+  }
+
+  Future<void> showInterstitialBefore(VoidCallback action) async {
+    if (!canShowAds || _interstitialShowing) {
+      action();
+      return;
+    }
+
+    final ad = _interstitialAd;
+    if (ad == null) {
+      _loadInterstitial();
+      action();
+      return;
+    }
+
+    _interstitialAd = null;
+    _interstitialShowing = true;
+    var completed = false;
+
+    void finish() {
+      if (completed) return;
+      completed = true;
+      _interstitialShowing = false;
+      ad.dispose();
+      _loadInterstitial();
+      action();
+    }
+
+    ad.fullScreenContentCallback = FullScreenContentCallback<InterstitialAd>(
+      onAdDismissedFullScreenContent: (_) => finish(),
+      onAdFailedToShowFullScreenContent: (_, _) => finish(),
+    );
+
+    try {
+      await ad.show();
+    } catch (_) {
+      finish();
+    }
+  }
+
+  void _loadInterstitial() {
+    if (!canShowAds || _interstitialLoading || _interstitialAd != null) return;
+    final adUnitId = _interstitialAdUnitId;
+    if (adUnitId.isEmpty) return;
+    _ensureInitialized();
+
+    _interstitialLoading = true;
+    unawaited(
+      InterstitialAd.load(
+        adUnitId: adUnitId,
+        request: const AdRequest(),
+        adLoadCallback: InterstitialAdLoadCallback(
+          onAdLoaded: (ad) {
+            _interstitialLoading = false;
+            _interstitialAd = ad;
+          },
+          onAdFailedToLoad: (_) {
+            _interstitialLoading = false;
+          },
+        ),
+      ),
+    );
+  }
+
+  void dispose() {
+    _interstitialAd?.dispose();
+    _interstitialAd = null;
+    _interstitialLoading = false;
+  }
+
+  static void _ensureInitialized() {
+    if (!supported || _mobileAdsInitialized) return;
+    _mobileAdsInitialized = true;
+    unawaited(MobileAds.instance.initialize());
   }
 }
 
-class _LandscapeBlockedScreen extends StatelessWidget {
-  const _LandscapeBlockedScreen();
+class AdMobBanner extends StatefulWidget {
+  const AdMobBanner({required this.adMob, super.key});
+
+  final AdMobService adMob;
+
+  @override
+  State<AdMobBanner> createState() => _AdMobBannerState();
+}
+
+class _AdMobBannerState extends State<AdMobBanner> {
+  static const _retryDelay = Duration(seconds: 45);
+
+  BannerAd? _bannerAd;
+  bool _loaded = false;
+  Timer? _retryTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBanner();
+  }
+
+  @override
+  void didUpdateWidget(covariant AdMobBanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.adMob.canShowAds) {
+      _disposeBanner();
+      return;
+    }
+    if (_bannerAd == null) _loadBanner();
+  }
+
+  void _loadBanner() {
+    if (!widget.adMob.canShowAds) return;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _bannerAd?.dispose();
+    _bannerAd = widget.adMob.createBannerAd(
+      onLoaded: () {
+        if (mounted) setState(() => _loaded = true);
+      },
+      onFailed: () {
+        // 初回ロードだけでなく自動更新の失敗でも呼ばれる (広告は破棄済み)。
+        // そのままでは消えたきりになるので、時間をおいて作り直す。
+        _bannerAd = null;
+        if (!mounted) return;
+        setState(() => _loaded = false);
+        _retryTimer = Timer(_retryDelay, () {
+          if (mounted) _loadBanner();
+        });
+      },
+    )..load();
+  }
+
+  @override
+  void dispose() {
+    _disposeBanner();
+    super.dispose();
+  }
+
+  void _disposeBanner() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _bannerAd?.dispose();
+    _bannerAd = null;
+    _loaded = false;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const _SkyBackdrop(),
-          SafeArea(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.88),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.screen_rotation_alt_rounded,
-                          size: 42,
-                          color: Color(0xffb53c18),
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          '横画面では遊べません',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          '画面を縦向きに戻してください。',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 15),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+    if (!widget.adMob.canShowAds) return const SizedBox.shrink();
+    final bannerAd = _bannerAd;
+    return SafeArea(
+      top: false,
+      child: SizedBox(
+        height: widget.adMob.bannerHeight,
+        child: Center(
+          child: _loaded && bannerAd != null
+              ? SizedBox(
+                  width: bannerAd.size.width.toDouble(),
+                  height: bannerAd.size.height.toDouble(),
+                  child: AdWidget(ad: bannerAd),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ),
+    );
+  }
+}
+
+class AdRemovalPurchaseService extends ChangeNotifier {
+  AdRemovalPurchaseService({InAppPurchase? store}) : _store = store;
+
+  final InAppPurchase? _store;
+  StreamSubscription<List<PurchaseDetails>>? _subscription;
+  ProductDetails? _product;
+  bool _storeAvailable = false;
+  bool _loading = false;
+  bool _busy = false;
+  bool _owned = false;
+  String? _message;
+
+  Future<void> Function()? onEntitlementUnlocked;
+
+  InAppPurchase get _inAppPurchase => _store ?? InAppPurchase.instance;
+
+  static bool get supported {
+    if (kIsWeb) return false;
+    if (WidgetsBinding.instance.runtimeType.toString().contains(
+      'TestWidgetsFlutterBinding',
+    )) {
+      return false;
+    }
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android || TargetPlatform.iOS => true,
+      _ => false,
+    };
+  }
+
+  bool get owned => _owned;
+  bool get loading => _loading;
+  bool get busy => _busy;
+  bool get storeAvailable => _storeAvailable;
+  String get productId => _removeAdsProductId;
+  String get priceLabel => _product?.price ?? _removeAdsReferencePriceLabel;
+
+  bool get canBuy {
+    return supported &&
+        !_owned &&
+        !_loading &&
+        !_busy &&
+        _storeAvailable &&
+        _product != null;
+  }
+
+  bool get canRestore => supported && !_owned && !_loading && !_busy;
+
+  String? get message {
+    if (_owned) return '広告削除済み';
+    if (!supported) return null;
+    if (_loading) return '商品情報を確認中';
+    if (_busy) return '購入処理中';
+    return _message;
+  }
+
+  Future<void> load({required bool owned}) async {
+    _owned = owned;
+    if (!supported) {
+      _storeAvailable = false;
+      _loading = false;
+      _busy = false;
+      _notify();
+      return;
+    }
+
+    _subscription ??= _inAppPurchase.purchaseStream.listen(
+      _handlePurchaseUpdates,
+      onError: (_) {
+        _busy = false;
+        _message = '購入状態を確認できません';
+        _notify();
+      },
+    );
+
+    _loading = true;
+    _message = null;
+    _notify();
+
+    try {
+      _storeAvailable = await _inAppPurchase.isAvailable();
+      if (!_storeAvailable) {
+        _product = null;
+        _message = 'ストアに接続できません';
+        return;
+      }
+
+      final response = await _inAppPurchase.queryProductDetails({
+        _removeAdsProductId,
+      });
+      _product = _productById(response.productDetails, _removeAdsProductId);
+      if (_product == null) {
+        _message = '広告削除の商品情報を取得できません';
+      }
+    } catch (_) {
+      _storeAvailable = false;
+      _product = null;
+      _message = '広告削除の商品情報を取得できません';
+    } finally {
+      _loading = false;
+      _notify();
+    }
+  }
+
+  Future<void> buy() async {
+    if (_owned || _busy) return;
+    final product = _product;
+    if (!canBuy || product == null) {
+      _message = '広告削除の商品情報を取得できません';
+      _notify();
+      return;
+    }
+
+    _busy = true;
+    _message = null;
+    _notify();
+
+    try {
+      final started = await _inAppPurchase.buyNonConsumable(
+        purchaseParam: PurchaseParam(productDetails: product),
+      );
+      if (!started) {
+        _busy = false;
+        _message = '購入を開始できません';
+        _notify();
+      }
+    } catch (_) {
+      _busy = false;
+      _message = '購入を開始できません';
+      _notify();
+    }
+  }
+
+  Future<void> restore() async {
+    if (_owned || _busy || !supported) return;
+    _busy = true;
+    _message = null;
+    _notify();
+
+    try {
+      await _inAppPurchase.restorePurchases();
+      if (_busy) {
+        _busy = false;
+        _message = _owned ? '広告削除済み' : '復元できる購入はありません';
+        _notify();
+      }
+    } catch (_) {
+      _busy = false;
+      _message = '購入を復元できません';
+      _notify();
+    }
+  }
+
+  Future<void> _handlePurchaseUpdates(List<PurchaseDetails> purchases) async {
+    if (purchases.isEmpty) {
+      if (_busy) {
+        _busy = false;
+        _message = '復元できる購入はありません';
+        _notify();
+      }
+      return;
+    }
+
+    for (final purchase in purchases) {
+      if (purchase.productID != _removeAdsProductId) continue;
+      await _handlePurchase(purchase);
+    }
+  }
+
+  Future<void> _handlePurchase(PurchaseDetails purchase) async {
+    var shouldCompletePurchase = purchase.pendingCompletePurchase;
+    try {
+      switch (purchase.status) {
+        case PurchaseStatus.pending:
+          _busy = true;
+          _message = '購入処理中';
+          break;
+        case PurchaseStatus.purchased:
+        case PurchaseStatus.restored:
+          await _unlockEntitlement();
+          _busy = false;
+          _message = '広告削除済み';
+          break;
+        case PurchaseStatus.error:
+          _busy = false;
+          _message = '購入を完了できません';
+          break;
+        case PurchaseStatus.canceled:
+          _busy = false;
+          _message = '購入をキャンセルしました';
+          break;
+      }
+    } catch (_) {
+      if (purchase.status == PurchaseStatus.purchased ||
+          purchase.status == PurchaseStatus.restored) {
+        shouldCompletePurchase = false;
+      }
+      _busy = false;
+      _message = '購入状態を保存できません';
+    } finally {
+      if (shouldCompletePurchase) {
+        try {
+          await _inAppPurchase.completePurchase(purchase);
+        } catch (_) {
+          _message = '購入完了処理を確認できません';
+        }
+      }
+      _notify();
+    }
+  }
+
+  Future<void> _unlockEntitlement() async {
+    if (_owned) return;
+    _owned = true;
+    await onEntitlementUnlocked?.call();
+  }
+
+  ProductDetails? _productById(List<ProductDetails> products, String id) {
+    for (final product in products) {
+      if (product.id == id) return product;
+    }
+    return null;
+  }
+
+  void _notify() {
+    if (hasListeners) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+}
+
+enum _FantasyButtonTone { primary, secondary, quiet }
+
+class _GamePanel extends StatelessWidget {
+  const _GamePanel({
+    required this.child,
+    this.padding = const EdgeInsets.all(18),
+    this.maxWidth,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double? maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final panel = DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: 0.96),
+            _UiColors.paper.withValues(alpha: 0.95),
+            _UiColors.paperWarm.withValues(alpha: 0.94),
+          ],
+          stops: const [0.0, 0.48, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _UiColors.deepGold.withValues(alpha: 0.55),
+          width: 1.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _UiColors.ink.withValues(alpha: 0.30),
+            blurRadius: 30,
+            offset: const Offset(0, 18),
+          ),
+          BoxShadow(
+            color: _UiColors.gold.withValues(alpha: 0.20),
+            blurRadius: 20,
+            offset: const Offset(0, 0),
           ),
         ],
       ),
+      child: Padding(padding: padding, child: child),
     );
+
+    if (maxWidth == null) return panel;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth!),
+      child: panel,
+    );
+  }
+}
+
+class _IconBadge extends StatelessWidget {
+  const _IconBadge({required this.icon, this.color = _UiColors.flame});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 38.0;
+    return SizedBox.square(
+      dimension: size,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [_UiColors.gold, color, _UiColors.ember],
+            stops: const [0.0, 0.58, 1.0],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.58)),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.25),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: Colors.white, size: size * 0.54),
+      ),
+    );
+  }
+}
+
+class _PanelHeader extends StatelessWidget {
+  const _PanelHeader({
+    required this.icon,
+    required this.title,
+    this.color = _UiColors.flame,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color color;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            _IconBadge(icon: icon, color: color),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: _UiColors.ink,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+            ?trailing,
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 3,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  _UiColors.deepGold.withValues(alpha: 0.65),
+                  _UiColors.gold.withValues(alpha: 0.35),
+                  _UiColors.deepGold.withValues(alpha: 0.06),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FantasyButton extends StatefulWidget {
+  const _FantasyButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.tone = _FantasyButtonTone.primary,
+    this.height = 54,
+    this.busy = false,
+    this.showIconBadge = true,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+  final _FantasyButtonTone tone;
+  final double height;
+  final bool busy;
+  final bool showIconBadge;
+
+  @override
+  State<_FantasyButton> createState() => _FantasyButtonState();
+}
+
+class _FantasyButtonState extends State<_FantasyButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = widget.tone;
+    final enabled = widget.onPressed != null;
+    final foreground = tone == _FantasyButtonTone.primary
+        ? Colors.white
+        : _UiColors.ink;
+    final borderColor = switch (tone) {
+      _FantasyButtonTone.primary => _UiColors.gold.withValues(alpha: 0.88),
+      _FantasyButtonTone.secondary => _UiColors.deepGold.withValues(
+        alpha: 0.62,
+      ),
+      _FantasyButtonTone.quiet => _UiColors.ink.withValues(alpha: 0.12),
+    };
+    final gradient = switch (tone) {
+      _FantasyButtonTone.primary => const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [_UiColors.gold, _UiColors.flame, Color(0xff8f3218)],
+        stops: [0.0, 0.42, 1.0],
+      ),
+      _FantasyButtonTone.secondary => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withValues(alpha: 0.96),
+          _UiColors.paperWarm.withValues(alpha: 0.92),
+          _UiColors.gold.withValues(alpha: 0.26),
+        ],
+        stops: const [0.0, 0.62, 1.0],
+      ),
+      _FantasyButtonTone.quiet => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withValues(alpha: 0.44),
+          Colors.white.withValues(alpha: 0.24),
+        ],
+      ),
+    };
+
+    return AnimatedScale(
+      scale: _pressed && enabled ? 0.965 : 1.0,
+      duration: const Duration(milliseconds: 90),
+      curve: Curves.easeOut,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.5,
+        child: SizedBox(
+          width: double.infinity,
+          height: widget.height,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 90),
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              gradient: gradient,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor, width: 1.5),
+              boxShadow: enabled
+                  ? [
+                      BoxShadow(
+                        color: _UiColors.ink.withValues(
+                          alpha: _pressed ? 0.10 : 0.18,
+                        ),
+                        blurRadius: _pressed ? 6 : 14,
+                        offset: Offset(0, _pressed ? 3 : 8),
+                      ),
+                      BoxShadow(
+                        color: _UiColors.gold.withValues(alpha: 0.14),
+                        blurRadius: 16,
+                      ),
+                    ]
+                  : const [],
+            ),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _ButtonTrimPainter(
+                      primary: tone == _FantasyButtonTone.primary,
+                    ),
+                  ),
+                ),
+                // Top gloss to give the button a subtle 3D sheen.
+                Positioned(
+                  left: 3,
+                  right: 3,
+                  top: 3,
+                  height: widget.height * 0.42,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withValues(
+                              alpha: tone == _FantasyButtonTone.primary
+                                  ? 0.30
+                                  : 0.45,
+                            ),
+                            Colors.white.withValues(alpha: 0.0),
+                          ],
+                        ),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: widget.onPressed,
+                      onHighlightChanged: (value) {
+                        setState(() => _pressed = value);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox.square(
+                              dimension: 34,
+                              child: _leadingIcon(tone, foreground),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                widget.label,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: foreground,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.2,
+                                  shadows: tone == _FantasyButtonTone.primary
+                                      ? const [
+                                          Shadow(
+                                            offset: Offset(0, 1),
+                                            blurRadius: 2,
+                                            color: Colors.black38,
+                                          ),
+                                        ]
+                                      : const [],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const SizedBox.square(dimension: 34),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _leadingIcon(_FantasyButtonTone tone, Color foreground) {
+    final progressColor = tone == _FantasyButtonTone.primary
+        ? _UiColors.ink
+        : Colors.white;
+    final icon = widget.busy
+        ? Padding(
+            padding: const EdgeInsets.all(8),
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: progressColor,
+            ),
+          )
+        : Icon(
+            widget.icon,
+            color: widget.showIconBadge ? progressColor : foreground,
+            size: widget.showIconBadge ? 20 : 24,
+          );
+
+    if (!widget.showIconBadge) {
+      return Center(child: icon);
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: tone == _FantasyButtonTone.primary
+              ? const [Color(0xfffff2bc), _UiColors.gold, _UiColors.deepGold]
+              : const [_UiColors.ember, _UiColors.flame],
+        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.55)),
+        boxShadow: [
+          BoxShadow(
+            color: _UiColors.ink.withValues(alpha: 0.20),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: icon,
+    );
+  }
+}
+
+class _ButtonTrimPainter extends CustomPainter {
+  const _ButtonTrimPainter({required this.primary});
+
+  final bool primary;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width < 80 || size.height < 32) return;
+    final highlight = Paint()
+      ..color = Colors.white.withValues(alpha: primary ? 0.34 : 0.58)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+    final dark = Paint()
+      ..color = _UiColors.ink.withValues(alpha: primary ? 0.26 : 0.10)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+
+    final top = RRect.fromRectAndRadius(
+      Rect.fromLTWH(4, 4, size.width - 8, size.height - 8),
+      const Radius.circular(9),
+    );
+    canvas.drawRRect(top, highlight);
+    canvas.drawLine(
+      Offset(12, size.height - 5),
+      Offset(size.width - 12, size.height - 5),
+      dark,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ButtonTrimPainter oldDelegate) {
+    return oldDelegate.primary != primary;
   }
 }
 
@@ -144,14 +1192,18 @@ class DragonShell extends StatefulWidget {
 
 class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
   static const MethodChannel _audioLifecycleChannel = MethodChannel(
-    'shingeki_dragon/audio_lifecycle',
+    'attack_of_the_dragon/audio_lifecycle',
   );
 
   final GameAudio _audio = GameAudio();
+  final AdMobService _adMob = AdMobService();
+  final AdRemovalPurchaseService _adRemoval = AdRemovalPurchaseService();
   late final AppLifecycleListener _appLifecycleListener;
   ShellScreen _screen = ShellScreen.title;
   AppSettings _settings = AppSettings.defaults();
   List<ScoreEntry> _localScores = const [];
+  List<ScoreEntry>? _onlineScores;
+  bool _scoreboardOverGame = false;
   bool _loaded = false;
 
   @override
@@ -160,12 +1212,14 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _appLifecycleListener = AppLifecycleListener(
       onResume: () => _setAudioActive(true),
-      onInactive: () => _setAudioActive(false),
       onHide: () => _setAudioActive(false),
       onPause: () => _setAudioActive(false),
       onDetach: () => _setAudioActive(false),
     );
     _audioLifecycleChannel.setMethodCallHandler(_handleAudioLifecycleCall);
+    _adRemoval
+      ..onEntitlementUnlocked = _unlockAdRemoval
+      ..addListener(_handleAdRemovalChanged);
     _load();
   }
 
@@ -174,17 +1228,41 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _audioLifecycleChannel.setMethodCallHandler(null);
     _appLifecycleListener.dispose();
+    _adRemoval
+      ..removeListener(_handleAdRemovalChanged)
+      ..dispose();
+    _adMob.dispose();
     _audio.dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _setAudioActive(state == AppLifecycleState.resumed);
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _setAudioActive(true);
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        _setAudioActive(false);
+      case AppLifecycleState.inactive:
+        break;
+    }
   }
 
   void _setAudioActive(bool active) {
+    if (!active && _keepsAudioActiveForDesktop) return;
     unawaited(_audio.setAppActive(active));
+  }
+
+  bool get _keepsAudioActiveForDesktop {
+    if (kIsWeb) return false;
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.windows ||
+      TargetPlatform.macOS ||
+      TargetPlatform.linux => true,
+      _ => false,
+    };
   }
 
   Future<void> _handleAudioLifecycleCall(MethodCall call) async {
@@ -193,17 +1271,20 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
         await _audio.setAppActive(true);
         return;
       case 'inactive':
-        await _audio.setAppActive(false);
+        // Window focus can be lost while the Flutter view is still visible.
+        // The app lifecycle callbacks above handle real backgrounding.
         return;
     }
   }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final hasPlayerName = prefs.containsKey('playerName');
+    final storedPlayerName = prefs.getString('playerName');
+    final storedPlayerId = prefs.getString('playerId');
     final settings = AppSettings.fromPrefs(prefs);
     final scores = ScoreStore.loadLocalScores(prefs);
-    if (!hasPlayerName) {
+    if (storedPlayerName != settings.playerName ||
+        storedPlayerId != settings.playerId) {
       await settings.save(prefs);
     }
     if (!mounted) return;
@@ -213,6 +1294,11 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
       _loaded = true;
     });
     _audio.applySettings(settings);
+    _adMob.setAdsRemoved(settings.adsRemoved);
+    unawaited(_adRemoval.load(owned: settings.adsRemoved));
+    await repairJustAudioAssetCache();
+    if (!mounted) return;
+    unawaited(_audio.preloadSfx(_preloadedSfxFiles));
     unawaited(
       _audio.playMusicIntroThenLoop(
         introFile: _gameBgmIntroFile,
@@ -227,6 +1313,24 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
     if (!mounted) return;
     setState(() => _settings = settings);
     _audio.applySettings(settings);
+    _adMob.setAdsRemoved(settings.adsRemoved);
+  }
+
+  Future<void> _unlockAdRemoval() async {
+    if (_settings.adsRemoved) {
+      _adMob.setAdsRemoved(true);
+      return;
+    }
+    final nextSettings = _settings.copyWith(adsRemoved: true);
+    final prefs = await SharedPreferences.getInstance();
+    await nextSettings.save(prefs);
+    if (!mounted) return;
+    setState(() => _settings = nextSettings);
+    _adMob.setAdsRemoved(true);
+  }
+
+  void _handleAdRemovalChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _recordScore(ScoreEntry entry) async {
@@ -234,12 +1338,32 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
     final scores = await ScoreStore.addLocalScore(prefs, entry);
     if (mounted) setState(() => _localScores = scores);
     if (_scoreSubmitUrl.isNotEmpty) {
-      unawaited(ScoreStore.submitScore(entry));
+      unawaited(_submitScore(entry));
     }
   }
 
+  Future<void> _submitScore(ScoreEntry entry) async {
+    final onlineScores = await ScoreStore.submitScore(entry);
+    if (!mounted || onlineScores == null) return;
+    setState(() => _onlineScores = onlineScores);
+  }
+
   void _show(ShellScreen screen) {
-    setState(() => _screen = screen);
+    setState(() {
+      _screen = screen;
+      _scoreboardOverGame = false;
+    });
+  }
+
+  void _showResultScoreboard() {
+    setState(() {
+      _screen = ShellScreen.game;
+      _scoreboardOverGame = true;
+    });
+  }
+
+  void _hideResultScoreboard() {
+    setState(() => _scoreboardOverGame = false);
   }
 
   int get _bestScore {
@@ -253,32 +1377,67 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return switch (_screen) {
+    final screen = switch (_screen) {
       ShellScreen.title => TitleScreen(
         audio: _audio,
         onStart: () => _show(ShellScreen.game),
         onSettings: () => _show(ShellScreen.settings),
         onScoreboard: () => _show(ShellScreen.scoreboard),
       ),
-      ShellScreen.game => GameScreen(
-        settings: _settings,
-        bestScore: _bestScore,
-        audio: _audio,
-        onScore: _recordScore,
-        onTitle: () => _show(ShellScreen.title),
+      ShellScreen.game => Stack(
+        fit: StackFit.expand,
+        children: [
+          _buildGameScreen(),
+          if (_scoreboardOverGame)
+            _buildScoreboardScreen(
+              backLabel: 'リザルトへ戻る',
+              onBack: _hideResultScoreboard,
+            ),
+        ],
       ),
       ShellScreen.settings => SettingsScreen(
         settings: _settings,
         audio: _audio,
+        adRemoval: _adRemoval,
         onChanged: _saveSettings,
         onBack: () => _show(ShellScreen.title),
       ),
-      ShellScreen.scoreboard => ScoreboardScreen(
-        localScores: _localScores,
-        audio: _audio,
+      ShellScreen.scoreboard => _buildScoreboardScreen(
         onBack: () => _show(ShellScreen.title),
       ),
     };
+    return Column(
+      children: [
+        Expanded(child: screen),
+        AdMobBanner(adMob: _adMob),
+      ],
+    );
+  }
+
+  Widget _buildGameScreen() {
+    return GameScreen(
+      settings: _settings,
+      bestScore: _bestScore,
+      audio: _audio,
+      adMob: _adMob,
+      onRankedRunStart: () => ScoreStore.startRankedRun(_settings),
+      onScore: _recordScore,
+      onTitle: () => _show(ShellScreen.title),
+      onScoreboard: _showResultScoreboard,
+    );
+  }
+
+  Widget _buildScoreboardScreen({
+    required VoidCallback onBack,
+    String backLabel = 'タイトルへ戻る',
+  }) {
+    return ScoreboardScreen(
+      localScores: _localScores,
+      onlineScores: _onlineScores,
+      audio: _audio,
+      backLabel: backLabel,
+      onBack: onBack,
+    );
   }
 }
 
@@ -315,8 +1474,9 @@ class TitleScreen extends StatelessWidget {
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 28),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 320),
+                  _GamePanel(
+                    maxWidth: 352,
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -324,7 +1484,6 @@ class TitleScreen extends StatelessWidget {
                           icon: Icons.play_arrow_rounded,
                           label: 'スタート',
                           onPressed: () {
-                            unawaited(audio.playSfx('ui_accept.ogg'));
                             onStart();
                           },
                         ),
@@ -333,7 +1492,6 @@ class TitleScreen extends StatelessWidget {
                           icon: Icons.tune_rounded,
                           label: '設定',
                           onPressed: () {
-                            unawaited(audio.playSfx('ui_accept.ogg'));
                             onSettings();
                           },
                         ),
@@ -342,7 +1500,6 @@ class TitleScreen extends StatelessWidget {
                           icon: Icons.leaderboard_rounded,
                           label: 'スコアボード',
                           onPressed: () {
-                            unawaited(audio.playSfx('ui_accept.ogg'));
                             onScoreboard();
                           },
                         ),
@@ -372,14 +1529,14 @@ class _MenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 58,
-      child: FilledButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(label, style: const TextStyle(fontSize: 18)),
-      ),
+    final isStart = icon == Icons.play_arrow_rounded;
+    return _FantasyButton(
+      icon: icon,
+      label: label,
+      onPressed: onPressed,
+      tone: isStart ? _FantasyButtonTone.primary : _FantasyButtonTone.secondary,
+      height: 60,
+      showIconBadge: false,
     );
   }
 }
@@ -388,6 +1545,7 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     required this.settings,
     required this.audio,
+    required this.adRemoval,
     required this.onChanged,
     required this.onBack,
     super.key,
@@ -395,6 +1553,7 @@ class SettingsScreen extends StatefulWidget {
 
   final AppSettings settings;
   final GameAudio audio;
+  final AdRemovalPurchaseService adRemoval;
   final ValueChanged<AppSettings> onChanged;
   final VoidCallback onBack;
 
@@ -406,6 +1565,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final TextEditingController _nameController;
   late final String _emptyNameFallback;
   late AppSettings _draft;
+  AccountProvider? _authenticatingProvider;
 
   @override
   void initState() {
@@ -421,87 +1581,295 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant SettingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.settings.adsRemoved != widget.settings.adsRemoved) {
+      _draft = _draft.copyWith(adsRemoved: widget.settings.adsRemoved);
+    }
+  }
+
   void _commit(AppSettings settings) {
     setState(() => _draft = settings);
     widget.onChanged(_settingsForSave(settings));
   }
 
   AppSettings _settingsForSave(AppSettings settings) {
-    if (settings.playerName.isNotEmpty) return settings;
-    return settings.copyWith(playerName: _emptyNameFallback);
+    final settingsWithEntitlements = settings.copyWith(
+      adsRemoved: settings.adsRemoved || widget.settings.adsRemoved,
+    );
+    if (settingsWithEntitlements.playerName.isNotEmpty) {
+      return settingsWithEntitlements;
+    }
+    return settingsWithEntitlements.copyWith(playerName: _emptyNameFallback);
   }
 
   void _backToTitle() {
     widget.onChanged(_settingsForSave(_draft));
-    unawaited(widget.audio.playSfx('ui_cancel.ogg'));
     widget.onBack();
+  }
+
+  bool get _accountBusy => _authenticatingProvider != null;
+
+  AccountProvider? get _accountProviderForPlatform {
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android => AccountProvider.google,
+      TargetPlatform.iOS => AccountProvider.apple,
+      _ => null,
+    };
+  }
+
+  bool _accountAuthAvailable(AccountProvider provider) {
+    return _scoreSubmitUrl.isNotEmpty &&
+        provider == _accountProviderForPlatform;
+  }
+
+  IconData _accountProviderIcon(AccountProvider provider) {
+    return switch (provider) {
+      AccountProvider.google => Icons.g_mobiledata_rounded,
+      AccountProvider.apple => Icons.apple_rounded,
+    };
+  }
+
+  bool _loggedInWith(AccountProvider provider) {
+    return _draft.accountProvider == provider;
+  }
+
+  Future<void> _authenticateProvider(AccountProvider provider) async {
+    final settings = _settingsForSave(_draft);
+    _commit(settings);
+    setState(() => _authenticatingProvider = provider);
+    try {
+      final credential = switch (provider) {
+        AccountProvider.google => await AccountSignIn.signInWithGoogle(),
+        AccountProvider.apple => await AccountSignIn.signInWithApple(),
+      };
+      final player = await ScoreStore.authenticateProvider(
+        settings: settings,
+        credential: credential,
+      );
+      if (!mounted) return;
+      final nextSettings = settings.copyWith(
+        playerId: player.playerId,
+        playerName: player.name,
+        accountProvider: player.provider,
+      );
+      _nameController
+        ..text = nextSettings.playerName
+        ..selection = TextSelection.collapsed(
+          offset: nextSettings.playerName.length,
+        );
+      _commit(nextSettings);
+      _showAccountMessage('${provider.label}でログインしました。');
+    } catch (error) {
+      _showAccountMessage(
+        _isSignInCancellation(error)
+            ? 'ログインをキャンセルしました。'
+            : '${provider.label}でログインできませんでした。',
+      );
+    } finally {
+      if (mounted) setState(() => _authenticatingProvider = null);
+    }
+  }
+
+  static bool _isSignInCancellation(Object error) {
+    if (error is GoogleSignInException) {
+      return error.code == GoogleSignInExceptionCode.canceled;
+    }
+    if (error is SignInWithAppleAuthorizationException) {
+      return error.code == AuthorizationErrorCode.canceled;
+    }
+    return false;
+  }
+
+  Future<void> _logout(AccountProvider provider) async {
+    setState(() => _authenticatingProvider = provider);
+    try {
+      await AccountSignIn.signOut(provider);
+    } catch (_) {
+      // 端末側のサインアウトに失敗してもローカルの連携解除は続行する。
+    }
+    if (!mounted) return;
+    // 連携を外したゲストが元アカウントの playerId でスコアを送らないよう、
+    // 新しいゲストIDを発行する。再ログインすれば元の playerId に戻る。
+    _commit(
+      _draft.copyWith(
+        playerId: AppSettings.randomPlayerId(),
+        clearAccountProvider: true,
+      ),
+    );
+    _showAccountMessage('ログアウトしました。');
+    setState(() => _authenticatingProvider = null);
+  }
+
+  void _showAccountMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final accountProvider = _accountProviderForPlatform;
+    final loggedIn = accountProvider != null && _loggedInWith(accountProvider);
+
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
           const _SkyBackdrop(),
           SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
-                child: Padding(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
                   padding: const EdgeInsets.all(20),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.86),
-                      borderRadius: BorderRadius.circular(8),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: math.max(0, constraints.maxHeight - 40),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          TextField(
-                            controller: _nameController,
-                            maxLength: AppSettings.maxPlayerNameLength,
-                            decoration: InputDecoration(
-                              labelText: 'プレイヤー名',
-                              counterText: '',
-                              hintText: _emptyNameFallback,
-                              hintStyle: const TextStyle(color: Colors.black38),
-                            ),
-                            onChanged: (value) {
-                              final clean = AppSettings.cleanName(value);
-                              if (clean != value) {
-                                _nameController
-                                  ..text = clean
-                                  ..selection = TextSelection.collapsed(
-                                    offset: clean.length,
-                                  );
-                              }
-                              _commit(_draft.copyWith(playerName: clean));
-                            },
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 460),
+                        child: _GamePanel(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const _PanelHeader(
+                                icon: Icons.tune_rounded,
+                                title: '設定',
+                              ),
+                              const SizedBox(height: 20),
+                              TextField(
+                                controller: _nameController,
+                                maxLength: AppSettings.maxPlayerNameLength,
+                                decoration: InputDecoration(
+                                  labelText: 'プレイヤー名',
+                                  counterText: '',
+                                  hintText: _emptyNameFallback,
+                                  hintStyle: const TextStyle(
+                                    color: Colors.black38,
+                                  ),
+                                ),
+                                onChanged: (value) {
+                                  final clean = AppSettings.cleanName(value);
+                                  if (clean != value) {
+                                    _nameController
+                                      ..text = clean
+                                      ..selection = TextSelection.collapsed(
+                                        offset: clean.length,
+                                      );
+                                  }
+                                  _commit(_draft.copyWith(playerName: clean));
+                                },
+                              ),
+                              const SizedBox(height: 18),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.volume_up_rounded,
+                                    size: 20,
+                                    color: _UiColors.ember,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Expanded(
+                                    child: Text(
+                                      '音量',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: _UiColors.ink,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${(100 * _draft.volume).round()}%',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      color: _UiColors.ember,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Slider(
+                                value: _draft.volume,
+                                onChanged: (value) {
+                                  _commit(_draft.copyWith(volume: value));
+                                },
+                              ),
+                              const Divider(height: 26),
+                              if (accountProvider != null) ...[
+                                if (loggedIn) ...[
+                                  _FantasyButton(
+                                    icon: Icons.verified_user_rounded,
+                                    label: '${accountProvider.label}でログイン済み',
+                                    tone: _FantasyButtonTone.quiet,
+                                    height: 50,
+                                    onPressed: null,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _FantasyButton(
+                                    icon: _accountProviderIcon(accountProvider),
+                                    label: '${accountProvider.label}アカウントを変更',
+                                    tone: _FantasyButtonTone.quiet,
+                                    height: 46,
+                                    onPressed: _accountBusy
+                                        ? null
+                                        : () => _authenticateProvider(
+                                            accountProvider,
+                                          ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _FantasyButton(
+                                    icon: Icons.logout_rounded,
+                                    label: 'ログアウト',
+                                    tone: _FantasyButtonTone.quiet,
+                                    height: 46,
+                                    onPressed: _accountBusy
+                                        ? null
+                                        : () => _logout(accountProvider),
+                                  ),
+                                ] else
+                                  _FantasyButton(
+                                    icon: _accountProviderIcon(accountProvider),
+                                    label: '${accountProvider.label}でログイン',
+                                    tone: _FantasyButtonTone.quiet,
+                                    height: 50,
+                                    busy:
+                                        _authenticatingProvider ==
+                                        accountProvider,
+                                    onPressed:
+                                        !_accountAuthAvailable(
+                                              accountProvider,
+                                            ) ||
+                                            _accountBusy
+                                        ? null
+                                        : () => _authenticateProvider(
+                                            accountProvider,
+                                          ),
+                                  ),
+                                const SizedBox(height: 14),
+                              ],
+                              _AdRemovalSection(
+                                adsRemoved: widget.settings.adsRemoved,
+                                adRemoval: widget.adRemoval,
+                              ),
+                              const _ReleaseCredits(),
+                              const SizedBox(height: 14),
+                              _FantasyButton(
+                                icon: Icons.arrow_back_rounded,
+                                label: 'タイトルへ戻る',
+                                tone: _FantasyButtonTone.secondary,
+                                onPressed: _backToTitle,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 18),
-                          Text('音量 ${(100 * _draft.volume).round()}%'),
-                          Slider(
-                            value: _draft.volume,
-                            onChanged: (value) {
-                              _commit(_draft.copyWith(volume: value));
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          FilledButton.icon(
-                            onPressed: _backToTitle,
-                            icon: const Icon(Icons.arrow_back_rounded),
-                            label: const Text('タイトルへ戻る'),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -510,17 +1878,154 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
+class _AdRemovalSection extends StatelessWidget {
+  const _AdRemovalSection({required this.adsRemoved, required this.adRemoval});
+
+  final bool adsRemoved;
+  final AdRemovalPurchaseService adRemoval;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!AdRemovalPurchaseService.supported && !adsRemoved) {
+      return const SizedBox.shrink();
+    }
+
+    return AnimatedBuilder(
+      animation: adRemoval,
+      builder: (context, _) {
+        final owned = adsRemoved || adRemoval.owned;
+        final message = owned ? '広告削除済み' : adRemoval.message;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Divider(height: 26),
+            Row(
+              children: [
+                const Icon(
+                  Icons.block_rounded,
+                  size: 20,
+                  color: _UiColors.ember,
+                ),
+                const SizedBox(width: 6),
+                const Expanded(
+                  child: Text(
+                    '広告削除',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: _UiColors.ink,
+                    ),
+                  ),
+                ),
+                Text(
+                  adRemoval.priceLabel,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: _UiColors.ember,
+                  ),
+                ),
+              ],
+            ),
+            if (message != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: TextStyle(
+                  color: _UiColors.ink.withValues(alpha: 0.66),
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            _FantasyButton(
+              icon: owned ? Icons.check_circle_rounded : Icons.block_rounded,
+              label: owned ? '広告削除済み' : '広告削除 ${adRemoval.priceLabel}',
+              tone: _FantasyButtonTone.quiet,
+              height: 46,
+              busy: !owned && (adRemoval.loading || adRemoval.busy),
+              onPressed: owned || !adRemoval.canBuy ? null : adRemoval.buy,
+            ),
+            if (!owned && AdRemovalPurchaseService.supported) ...[
+              const SizedBox(height: 10),
+              _FantasyButton(
+                icon: Icons.restore_rounded,
+                label: '購入を復元',
+                tone: _FantasyButtonTone.quiet,
+                height: 46,
+                busy: adRemoval.busy,
+                onPressed: adRemoval.canRestore ? adRemoval.restore : null,
+              ),
+            ],
+            const SizedBox(height: 14),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ReleaseCredits extends StatelessWidget {
+  const _ReleaseCredits();
+
+  @override
+  Widget build(BuildContext context) {
+    final bodyStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: _UiColors.ink.withValues(alpha: 0.72),
+      fontWeight: FontWeight.w700,
+      height: 1.35,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Divider(height: 24),
+        Row(
+          children: [
+            Icon(
+              Icons.info_outline_rounded,
+              size: 18,
+              color: _UiColors.ember.withValues(alpha: 0.78),
+            ),
+            const SizedBox(width: 6),
+            const Text(
+              'Credits',
+              style: TextStyle(
+                color: _UiColors.ink,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text('Music: YouFulca (https://youfulca.com/)', style: bodyStyle),
+        const SizedBox(height: 3),
+        Text(
+          'Font: M PLUS Rounded 1c (SIL Open Font License 1.1)',
+          style: bodyStyle,
+        ),
+        const SizedBox(height: 3),
+        Text('SFX: The Ultimate 2017 16 bit Mini pack (CC0)', style: bodyStyle),
+      ],
+    );
+  }
+}
+
 class ScoreboardScreen extends StatefulWidget {
   const ScoreboardScreen({
     required this.localScores,
+    required this.onlineScores,
     required this.audio,
     required this.onBack,
+    this.backLabel = 'タイトルへ戻る',
     super.key,
   });
 
   final List<ScoreEntry> localScores;
+  final List<ScoreEntry>? onlineScores;
   final GameAudio audio;
   final VoidCallback onBack;
+  final String backLabel;
 
   @override
   State<ScoreboardScreen> createState() => _ScoreboardScreenState();
@@ -545,6 +2050,15 @@ enum ScoreboardPeriod {
   const ScoreboardPeriod(this.label);
 
   final String label;
+
+  String get queryValue {
+    return switch (this) {
+      ScoreboardPeriod.today => 'today',
+      ScoreboardPeriod.week => 'week',
+      ScoreboardPeriod.month => 'month',
+      ScoreboardPeriod.allTime => 'all',
+    };
+  }
 }
 
 class _ScoreboardScreenState extends State<ScoreboardScreen> {
@@ -560,7 +2074,24 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
   @override
   void initState() {
     super.initState();
-    _scores = ScoreStore.loadScoreboard(widget.localScores);
+    _scores = ScoreStore.loadScoreboard(
+      widget.localScores,
+      period: _period,
+      cachedOnlineScores: widget.onlineScores,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant ScoreboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.localScores != oldWidget.localScores ||
+        widget.onlineScores != oldWidget.onlineScores) {
+      _scores = ScoreStore.loadScoreboard(
+        widget.localScores,
+        period: _period,
+        cachedOnlineScores: widget.onlineScores,
+      );
+    }
   }
 
   @override
@@ -575,6 +2106,13 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
               padding: const EdgeInsets.all(18),
               child: FutureBuilder<ScoreboardData>(
                 future: _scores,
+                initialData: widget.onlineScores == null
+                    ? null
+                    : ScoreboardData(
+                        onlineScores: widget.onlineScores!,
+                        sourceLabel: 'オンライン',
+                        message: '投稿結果を即時反映しています。',
+                      ),
                 builder: (context, snapshot) {
                   final data = snapshot.data;
                   final sourceScores = _source == ScoreboardSource.online
@@ -595,114 +2133,119 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.88),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.leaderboard_rounded),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        'スコアボード',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleLarge
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
-                                    ),
-                                    if (isLoading)
-                                      const SizedBox.square(
+                        child: _GamePanel(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _PanelHeader(
+                                icon: Icons.leaderboard_rounded,
+                                title: 'スコアボード',
+                                color: _UiColors.teal,
+                                trailing: isLoading
+                                    ? const SizedBox.square(
                                         dimension: 18,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
                                         ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                _BestScoreBlock(score: _bestScore),
-                                const SizedBox(height: 10),
-                                _ScoreboardControls(
-                                  source: _source,
-                                  period: _period,
-                                  onSourceChanged: (value) {
-                                    setState(() => _source = value);
-                                  },
-                                  onPeriodChanged: (value) {
-                                    setState(() => _period = value);
-                                  },
-                                ),
-                                const SizedBox(height: 10),
-                                _ScoreboardListHeader(
-                                  sourceLabel:
-                                      _source == ScoreboardSource.online
-                                      ? data?.sourceLabel ??
-                                            ScoreboardSource.online.label
-                                      : ScoreboardSource.local.label,
-                                  periodLabel: _period.label,
-                                  count: itemCount,
-                                ),
-                                const SizedBox(height: 6),
-                                Expanded(
-                                  child:
-                                      isLoading &&
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(height: 16),
+                              _BestScoreBlock(score: _bestScore),
+                              const SizedBox(height: 10),
+                              _ScoreboardControls(
+                                source: _source,
+                                period: _period,
+                                onSourceChanged: (value) {
+                                  setState(() {
+                                    _source = value;
+                                    if (value == ScoreboardSource.online) {
+                                      _scores = ScoreStore.loadScoreboard(
+                                        widget.localScores,
+                                        period: _period,
+                                        cachedOnlineScores: widget.onlineScores,
+                                      );
+                                    }
+                                  });
+                                },
+                                onPeriodChanged: (value) {
+                                  setState(() {
+                                    _period = value;
+                                    if (_source == ScoreboardSource.online) {
+                                      _scores = ScoreStore.loadScoreboard(
+                                        widget.localScores,
+                                        period: value,
+                                        cachedOnlineScores: widget.onlineScores,
+                                      );
+                                    }
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              _ScoreboardListHeader(
+                                sourceLabel: _source == ScoreboardSource.online
+                                    ? data?.sourceLabel ??
+                                          ScoreboardSource.online.label
+                                    : ScoreboardSource.local.label,
+                                periodLabel: _period.label,
+                                count: itemCount,
+                              ),
+                              const SizedBox(height: 6),
+                              Expanded(
+                                child:
+                                    isLoading &&
+                                        _source == ScoreboardSource.online
+                                    ? const Center(
+                                        child: CircularProgressIndicator(),
+                                      )
+                                    : itemCount == 0
+                                    ? Center(
+                                        child: Text(
                                           _source == ScoreboardSource.online
-                                      ? const Center(
-                                          child: CircularProgressIndicator(),
-                                        )
-                                      : itemCount == 0
-                                      ? Center(
-                                          child: Text(
-                                            _source == ScoreboardSource.online
-                                                ? 'ランキングがありません'
-                                                : 'ローカル記録がありません',
-                                          ),
-                                        )
-                                      : ListView.builder(
-                                          itemCount: itemCount,
-                                          itemBuilder: (context, index) {
-                                            return _ScoreRow(
-                                              rank: index + 1,
-                                              score: scores[index],
-                                            );
-                                          },
+                                              ? 'ランキングがありません'
+                                              : 'ローカル記録がありません',
                                         ),
-                                ),
-                                if (_source == ScoreboardSource.online &&
-                                    (data?.message ?? '').isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 10),
-                                    child: Text(
-                                      data!.message,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(color: Colors.black54),
-                                    ),
+                                      )
+                                    : ListView.builder(
+                                        itemCount: itemCount,
+                                        itemBuilder: (context, index) {
+                                          return _ScoreRow(
+                                            rank: index + 1,
+                                            score: scores[index],
+                                            showDateTime:
+                                                _source ==
+                                                    ScoreboardSource.local ||
+                                                data?.sourceLabel ==
+                                                    ScoreboardSource
+                                                        .local
+                                                        .label,
+                                          );
+                                        },
+                                      ),
+                              ),
+                              if (_source == ScoreboardSource.online &&
+                                  (data?.message ?? '').isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 10),
+                                  child: Text(
+                                    data!.message,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(color: Colors.black54),
                                   ),
-                              ],
-                            ),
+                                ),
+                            ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 12),
-                      FilledButton.icon(
+                      _FantasyButton(
+                        icon: Icons.arrow_back_rounded,
+                        label: widget.backLabel,
+                        tone: _FantasyButtonTone.secondary,
                         onPressed: () {
-                          unawaited(widget.audio.playSfx('ui_cancel.ogg'));
                           widget.onBack();
                         },
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        label: const Text('タイトルへ戻る'),
                       ),
                     ],
                   );
@@ -731,44 +2274,113 @@ class _ScoreboardControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = Theme.of(
-      context,
-    ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w800);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SegmentedButton<ScoreboardSource>(
-          showSelectedIcon: false,
-          selected: {source},
-          segments: ScoreboardSource.values
-              .map(
-                (value) => ButtonSegment<ScoreboardSource>(
-                  value: value,
-                  icon: Icon(value.icon),
-                  label: Text(value.label, style: textStyle),
-                ),
-              )
-              .toList(),
-          onSelectionChanged: (values) => onSourceChanged(values.first),
+    const textStyle = TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0);
+    final sourceStyle = _controlStyle(
+      minimumSize: const Size(128, 40),
+      horizontalPadding: 14,
+    );
+    final periodStyle = _controlStyle(
+      minimumSize: const Size(74, 36),
+      horizontalPadding: 12,
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            _UiColors.gold.withValues(alpha: 0.24),
+            Colors.white.withValues(alpha: 0.42),
+          ],
         ),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SegmentedButton<ScoreboardPeriod>(
-            showSelectedIcon: false,
-            selected: {period},
-            segments: ScoreboardPeriod.values
-                .map(
-                  (value) => ButtonSegment<ScoreboardPeriod>(
-                    value: value,
-                    label: Text(value.label, style: textStyle),
-                  ),
-                )
-                .toList(),
-            onSelectionChanged: (values) => onPeriodChanged(values.first),
-          ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _UiColors.gold.withValues(alpha: 0.36)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SegmentedButton<ScoreboardSource>(
+              showSelectedIcon: false,
+              selected: {source},
+              style: sourceStyle,
+              segments: ScoreboardSource.values
+                  .map(
+                    (value) => ButtonSegment<ScoreboardSource>(
+                      value: value,
+                      icon: Icon(value.icon),
+                      label: Text(value.label, style: textStyle),
+                    ),
+                  )
+                  .toList(),
+              onSelectionChanged: (values) => onSourceChanged(values.first),
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<ScoreboardPeriod>(
+                showSelectedIcon: false,
+                selected: {period},
+                style: periodStyle,
+                segments: ScoreboardPeriod.values
+                    .map(
+                      (value) => ButtonSegment<ScoreboardPeriod>(
+                        value: value,
+                        label: Text(value.label, style: textStyle),
+                      ),
+                    )
+                    .toList(),
+                onSelectionChanged: (values) => onPeriodChanged(values.first),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  ButtonStyle _controlStyle({
+    required Size minimumSize,
+    required double horizontalPadding,
+  }) {
+    const selectedBackground = _UiColors.ember;
+    final unselectedBackground = Colors.white.withValues(alpha: 0.76);
+    final selectedBorder = _UiColors.gold.withValues(alpha: 0.58);
+    final unselectedBorder = _UiColors.ink.withValues(alpha: 0.20);
+
+    return ButtonStyle(
+      minimumSize: WidgetStateProperty.all(minimumSize),
+      padding: WidgetStateProperty.all(
+        EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 8),
+      ),
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return selectedBackground;
+        return unselectedBackground;
+      }),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return Colors.white;
+        return _UiColors.ink;
+      }),
+      iconColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return Colors.white;
+        return _UiColors.ink.withValues(alpha: 0.82);
+      }),
+      overlayColor: WidgetStateProperty.all(
+        _UiColors.gold.withValues(alpha: 0.14),
+      ),
+      side: WidgetStateProperty.resolveWith((states) {
+        return BorderSide(
+          color: states.contains(WidgetState.selected)
+              ? selectedBorder
+              : unselectedBorder,
+          width: states.contains(WidgetState.selected) ? 1.4 : 1,
+        );
+      }),
+      shape: WidgetStateProperty.all(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+      ),
+      textStyle: WidgetStateProperty.all(
+        const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0),
+      ),
     );
   }
 }
@@ -815,48 +2427,70 @@ class _BestScoreBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scoreText = score == 0 ? '--' : '$score m';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          '自己ベスト',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: Colors.black54,
-          ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _UiColors.gold.withValues(alpha: 0.30),
+            _UiColors.paperWarm.withValues(alpha: 0.55),
+            _UiColors.gold.withValues(alpha: 0.16),
+          ],
         ),
-        const SizedBox(height: 4),
-        Row(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _UiColors.deepGold.withValues(alpha: 0.42)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
           children: [
-            const Icon(
-              Icons.workspace_premium_rounded,
-              color: Color(0xffc85b24),
-              size: 28,
+            const _IconBadge(
+              icon: Icons.workspace_premium_rounded,
+              color: _UiColors.deepGold,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                scoreText,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: const Color(0xff662b15),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '自己ベスト',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xff8a5a23),
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  Text(
+                    scoreText,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                      color: const Color(0xff662b15),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        const Divider(height: 1),
-      ],
+      ),
     );
   }
 }
 
 class _ScoreRow extends StatelessWidget {
-  const _ScoreRow({required this.rank, required this.score});
+  const _ScoreRow({
+    required this.rank,
+    required this.score,
+    this.showDateTime = false,
+  });
 
   final int rank;
   final ScoreEntry score;
+  final bool showDateTime;
 
   Color get _accentColor {
     return switch (rank) {
@@ -883,74 +2517,167 @@ class _ScoreRow extends StatelessWidget {
       fontWeight: FontWeight.w900,
       color: topRank ? accent : const Color(0xff1f1d1a),
     );
-    return ColoredBox(
-      color: topRank ? accent.withValues(alpha: 0.12) : Colors.transparent,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 48,
-              child: topRank
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(_rankIcon, color: accent, size: 18),
-                        const SizedBox(width: 3),
-                        Text(
-                          '$rank',
-                          style: TextStyle(
-                            color: accent,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Text(
-                      '#$rank',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    score.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: nameStyle,
-                  ),
-                  Text(
-                    '撃破 ${score.kills}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: Colors.black54),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 104,
-              child: Text(
-                '${score.score} m',
-                textAlign: TextAlign.right,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: scoreStyle,
-              ),
+    final primaryText = showDateTime
+        ? _formatScoreDateTime(score.date)
+        : score.name;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: topRank
+                ? [
+                    accent.withValues(alpha: 0.22),
+                    _UiColors.paperWarm.withValues(alpha: 0.46),
+                  ]
+                : [
+                    Colors.white.withValues(alpha: 0.62),
+                    _UiColors.paper.withValues(alpha: 0.38),
+                  ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: topRank
+                ? accent.withValues(alpha: 0.30)
+                : _UiColors.ember.withValues(alpha: 0.12),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _UiColors.ink.withValues(alpha: topRank ? 0.10 : 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 48,
+                child: Center(
+                  child: topRank
+                      ? SizedBox.square(
+                          dimension: 34,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color.lerp(accent, Colors.white, 0.45)!,
+                                  accent,
+                                ],
+                              ),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.7),
+                                width: 1.4,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: accent.withValues(alpha: 0.4),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              _rankIcon,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          '$rank',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black45,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ScorePrimaryText(
+                      text: primaryText,
+                      style: nameStyle,
+                      preserveFullText: showDateTime,
+                    ),
+                    Text(
+                      '撃破 ${score.kills}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 72, maxWidth: 104),
+                child: Text(
+                  '${score.score} m',
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: scoreStyle,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _ScorePrimaryText extends StatelessWidget {
+  const _ScorePrimaryText({
+    required this.text,
+    required this.style,
+    required this.preserveFullText,
+  });
+
+  final String text;
+  final TextStyle? style;
+  final bool preserveFullText;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!preserveFullText) {
+      return Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(text, maxLines: 1, softWrap: false, style: style),
+      ),
+    );
+  }
+}
+
+String _formatScoreDateTime(DateTime date) {
+  final local = date.toLocal();
+  String twoDigits(int value) => value.toString().padLeft(2, '0');
+  return '${local.year}/${twoDigits(local.month)}/${twoDigits(local.day)} '
+      '${twoDigits(local.hour)}:${twoDigits(local.minute)}';
 }
 
 class GameScreen extends StatefulWidget {
@@ -958,22 +2685,30 @@ class GameScreen extends StatefulWidget {
     required this.settings,
     required this.bestScore,
     required this.audio,
+    required this.adMob,
+    required this.onRankedRunStart,
     required this.onScore,
     required this.onTitle,
+    required this.onScoreboard,
+    this.images,
     super.key,
   });
 
   final AppSettings settings;
   final int bestScore;
   final GameAudio audio;
+  final AdMobService adMob;
+  final Future<String?> Function() onRankedRunStart;
   final Future<void> Function(ScoreEntry score) onScore;
   final VoidCallback onTitle;
+  final VoidCallback onScoreboard;
+  final Future<GameImages>? images;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
 }
 
-enum RunState { ready, playing, gameOver }
+enum RunState { ready, playing, paused, gameOver }
 
 enum EnemyKind { bat, bird, slime, mage, gargoyle }
 
@@ -982,7 +2717,7 @@ class _GameScreenState extends State<GameScreen>
   static const _dragonFrameSize = Size(256, 192);
   static const _enemyCellSize = Size(256, 256);
   static const double _fireSpreadAngle = 0.20;
-  static const double _tapLiftSpeedFactor = 0.28;
+  static const double _tapLiftSpeedFactor = 0.36;
   static const double _rhythmTapInterval = 0.75;
   static const double _gravityFactor =
       2 * _tapLiftSpeedFactor / _rhythmTapInterval;
@@ -994,6 +2729,8 @@ class _GameScreenState extends State<GameScreen>
   Size _worldSize = Size.zero;
   RunState _state = RunState.ready;
   double _time = 0;
+  // 直近のインタースティシャル表示からの累計プレイ時間 (ラン間で持ち越す)。
+  double _playSecondsSinceInterstitial = 0;
   double _dragonY = 0;
   double _velocityY = 0;
   double _backgroundOffset = 0;
@@ -1002,6 +2739,9 @@ class _GameScreenState extends State<GameScreen>
   double _spawnTimer = 0.8;
   double _fireTimer = 0;
   bool _scoreRecorded = false;
+  bool _isNewRecord = false;
+  int _runId = 0;
+  String? _runToken;
   int _lastDangerPattern = -1;
   final List<EnemyModel> _enemies = [];
   final List<ProjectileModel> _fireballs = [];
@@ -1011,7 +2751,7 @@ class _GameScreenState extends State<GameScreen>
   @override
   void initState() {
     super.initState();
-    _images = GameImages.load();
+    _images = widget.images ?? GameImages.load();
     _ticker = createTicker(_tick)..start();
   }
 
@@ -1047,6 +2787,9 @@ class _GameScreenState extends State<GameScreen>
       _fireTimer = 0;
       _lastTick = null;
       _scoreRecorded = false;
+      _isNewRecord = false;
+      _runId += 1;
+      _runToken = null;
       _lastDangerPattern = -1;
       _enemies.clear();
       _fireballs.clear();
@@ -1057,13 +2800,65 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _tap() {
-    if (_worldSize == Size.zero || _state == RunState.gameOver) return;
-    if (_state == RunState.ready) {
-      _state = RunState.playing;
-      _scoreRecorded = false;
+    if (_worldSize == Size.zero ||
+        _state == RunState.paused ||
+        _state == RunState.gameOver) {
+      return;
     }
-    _velocityY = -_worldSize.height * _tapLiftSpeedFactor;
-    unawaited(widget.audio.playSfx('player_jump.ogg', volumeScale: 0.45));
+    final liftVelocity = -_worldSize.height * _tapLiftSpeedFactor;
+    if (_state == RunState.ready) {
+      final runId = _runId + 1;
+      setState(() {
+        _runId = runId;
+        _runToken = null;
+        _state = RunState.playing;
+        _scoreRecorded = false;
+        _velocityY = liftVelocity;
+      });
+      unawaited(_startRankedRun(runId));
+    } else {
+      _velocityY = liftVelocity;
+    }
+  }
+
+  Future<void> _startRankedRun(int runId) async {
+    final token = await widget.onRankedRunStart();
+    if (!mounted || runId != _runId || _state == RunState.ready) return;
+    _runToken = token;
+  }
+
+  void _retry() {
+    final shouldShowInterstitial =
+        Duration(
+          milliseconds: (_playSecondsSinceInterstitial * 1000).round(),
+        ) >=
+        _interstitialRetryPlayTime;
+    if (!shouldShowInterstitial || !widget.adMob.isInterstitialReady) {
+      if (shouldShowInterstitial) {
+        // 次のリトライで表示できるように読み込みだけ進めておく。
+        widget.adMob.warmUp();
+      }
+      _reset();
+      return;
+    }
+    _playSecondsSinceInterstitial = 0;
+    // 広告のAdActivityが半透明だとFlutterのライフサイクルがpausedまで
+    // 進まずBGMが鳴り続けるため、表示前後で明示的に止めて戻す。
+    unawaited(widget.audio.pauseMusic());
+    unawaited(
+      widget.adMob.showInterstitialBefore(() {
+        unawaited(widget.audio.resumeMusic());
+        _reset();
+      }),
+    );
+  }
+
+  void _togglePause() {
+    if (_state == RunState.playing) {
+      setState(() => _state = RunState.paused);
+    } else if (_state == RunState.paused) {
+      setState(() => _state = RunState.playing);
+    }
   }
 
   void _updateGame(double dt) {
@@ -1197,7 +2992,12 @@ class _GameScreenState extends State<GameScreen>
         ),
       );
     }
-    unawaited(widget.audio.playSfx('fireball.ogg', volumeScale: 0.42));
+    unawaited(
+      widget.audio.playSfx(
+        _dragonFireSfxFile,
+        volumeScale: _dragonFireSfxVolumeScale,
+      ),
+    );
   }
 
   void _shootEnemyBullet(EnemyModel enemy) {
@@ -1211,7 +3011,6 @@ class _GameScreenState extends State<GameScreen>
         spriteIndex: 5,
       ),
     );
-    unawaited(widget.audio.playSfx('enemy_charge.mp3', volumeScale: 0.28));
   }
 
   void _resolveFireballHits() {
@@ -1246,9 +3045,12 @@ class _GameScreenState extends State<GameScreen>
                 duration: 0.34,
               ),
             );
-            unawaited(widget.audio.playSfx('explosion.ogg', volumeScale: 0.38));
-          } else {
-            unawaited(widget.audio.playSfx('enemy_hit.ogg', volumeScale: 0.36));
+            unawaited(
+              widget.audio.playSfx(
+                _enemyBurstSfxFile,
+                volumeScale: _enemyBurstSfxVolumeScale,
+              ),
+            );
           }
           break;
         }
@@ -1282,18 +3084,21 @@ class _GameScreenState extends State<GameScreen>
   void _gameOver() {
     if (_state == RunState.gameOver) return;
     _state = RunState.gameOver;
+    _playSecondsSinceInterstitial += _time;
     _velocityY = 0;
-    unawaited(widget.audio.playSfx('player_damage.ogg', volumeScale: 0.7));
+    _isNewRecord = _score.round() > widget.bestScore;
     if (!_scoreRecorded) {
       _scoreRecorded = true;
       unawaited(
         widget.onScore(
           ScoreEntry(
+            playerId: widget.settings.playerId,
             name: AppSettings.scoreName(widget.settings.playerName),
             score: _score.round(),
             kills: _kills,
             date: DateTime.now().toUtc(),
             version: _gameVersion,
+            runToken: _runToken,
           ),
         ),
       );
@@ -1479,7 +3284,9 @@ class _GameScreenState extends State<GameScreen>
       _flappyGap * 0.56 + large * 0.56,
       _worldSize.height * 0.16,
     );
-    return margin + _rng.nextDouble() * (_worldSize.height - margin * 2);
+    final maxY = _worldSize.height - margin;
+    if (maxY <= margin) return _worldSize.height / 2;
+    return margin + _rng.nextDouble() * (maxY - margin);
   }
 
   void _addEnemy(
@@ -1493,7 +3300,10 @@ class _GameScreenState extends State<GameScreen>
   }) {
     final spec = EnemySpec.forKind(kind, _worldSize);
     final margin = math.max(spec.size * 0.52, 28.0);
-    final clampedY = y.clamp(margin, _worldSize.height - margin).toDouble();
+    final maxY = _worldSize.height - margin;
+    final clampedY = maxY <= margin
+        ? _worldSize.height / 2
+        : y.clamp(margin, maxY).toDouble();
     _enemies.add(
       EnemyModel(
         kind: kind,
@@ -1507,6 +3317,7 @@ class _GameScreenState extends State<GameScreen>
         amplitude: amplitude,
         phase: phase,
         waveRate: waveRate,
+        motionPhase: _rng.nextDouble() * math.pi * 2,
         shootTimer: kind == EnemyKind.mage ? 1.0 + _rng.nextDouble() : 999,
       ),
     );
@@ -1531,41 +3342,53 @@ class _GameScreenState extends State<GameScreen>
                 _worldSize = size;
                 if (_dragonY == 0) _dragonY = size.height * 0.45;
               }
-              return GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _tap,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CustomPaint(
-                      painter: DragonGamePainter(
-                        images: images,
-                        state: _state,
-                        time: _time,
-                        backgroundOffset: _backgroundOffset,
-                        score: _score,
-                        kills: _kills,
-                        dragonRect: _dragonRect,
-                        dragonFrameSize: _dragonFrameSize,
-                        enemyCellSize: _enemyCellSize,
-                        enemies: _enemies,
-                        fireballs: _fireballs,
-                        enemyBullets: _enemyBullets,
-                        effects: _effects,
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _tap,
+                      child: CustomPaint(
+                        painter: DragonGamePainter(
+                          images: images,
+                          state: _state,
+                          time: _time,
+                          backgroundOffset: _backgroundOffset,
+                          score: _score,
+                          kills: _kills,
+                          dragonRect: _dragonRect,
+                          dragonFrameSize: _dragonFrameSize,
+                          enemyCellSize: _enemyCellSize,
+                          enemies: _enemies,
+                          fireballs: _fireballs,
+                          enemyBullets: _enemyBullets,
+                          effects: _effects,
+                        ),
                       ),
                     ),
-                    if (_state == RunState.ready) const _ReadyPrompt(),
-                    if (_state == RunState.gameOver)
-                      _ResultOverlay(
-                        score: _score.round(),
-                        bestScore: math.max(widget.bestScore, _score.round()),
-                        kills: _kills,
-                        onRetry: _reset,
-                        onTitle: widget.onTitle,
-                        audio: widget.audio,
-                      ),
-                  ],
-                ),
+                  ),
+                  if (_state == RunState.ready)
+                    const IgnorePointer(child: _ReadyPrompt()),
+                  if (_state == RunState.paused)
+                    _PauseOverlay(onResume: _togglePause),
+                  if (_state == RunState.gameOver)
+                    _ResultOverlay(
+                      score: _score.round(),
+                      bestScore: math.max(widget.bestScore, _score.round()),
+                      kills: _kills,
+                      isNewRecord: _isNewRecord,
+                      onRetry: _retry,
+                      onTitle: widget.onTitle,
+                      onScoreboard: widget.onScoreboard,
+                      audio: widget.audio,
+                    ),
+                  if (_state == RunState.playing || _state == RunState.paused)
+                    _PauseButton(
+                      paused: _state == RunState.paused,
+                      onPressed: _togglePause,
+                    ),
+                ],
               );
             },
           ),
@@ -1575,28 +3398,214 @@ class _GameScreenState extends State<GameScreen>
   }
 }
 
-class _ReadyPrompt extends StatelessWidget {
-  const _ReadyPrompt();
+class _PauseButton extends StatelessWidget {
+  const _PauseButton({required this.paused, required this.onPressed});
+
+  final bool paused;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: const Alignment(0, 0.42),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.42),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-          child: Text(
-            'タップしてスタート',
-            style: TextStyle(
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 12, top: 12),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  _UiColors.ink.withValues(alpha: 0.72),
+                  _UiColors.ember.withValues(alpha: 0.76),
+                ],
+              ),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _UiColors.gold.withValues(alpha: 0.55),
+                width: 1.4,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.24),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: IconButton(
+              onPressed: onPressed,
+              tooltip: paused ? '再開' : '一時停止',
               color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+              icon: Icon(
+                paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReadyPrompt extends StatefulWidget {
+  const _ReadyPrompt();
+
+  @override
+  State<_ReadyPrompt> createState() => _ReadyPromptState();
+}
+
+class _ReadyPromptState extends State<_ReadyPrompt>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pulse = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    return Align(
+      alignment: const Alignment(0, 0.42),
+      child: AnimatedBuilder(
+        animation: pulse,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, -5 * pulse.value),
+            child: Transform.scale(scale: 1 + 0.04 * pulse.value, child: child),
+          );
+        },
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                _UiColors.ink.withValues(alpha: 0.80),
+                _UiColors.ember.withValues(alpha: 0.76),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: _UiColors.gold.withValues(alpha: 0.55)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 14,
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: _UiColors.gold.withValues(alpha: 0.25),
+                blurRadius: 18,
+              ),
+            ],
+          ),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.touch_app_rounded, color: _UiColors.gold, size: 22),
+                SizedBox(width: 10),
+                Text(
+                  'タップしてスタート',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GameOverlayScrim extends StatelessWidget {
+  const _GameOverlayScrim({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 3.5, sigmaY: 3.5),
+        child: ColoredBox(
+          color: _UiColors.ink.withValues(alpha: 0.38),
+          child: Center(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutBack,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value.clamp(0.0, 1.0),
+                  child: Transform.scale(
+                    scale: 0.88 + 0.12 * value,
+                    child: child,
+                  ),
+                );
+              },
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PauseOverlay extends StatelessWidget {
+  const _PauseOverlay({required this.onResume});
+
+  final VoidCallback onResume;
+
+  @override
+  Widget build(BuildContext context) {
+    return _GameOverlayScrim(
+      child: _GamePanel(
+        maxWidth: 320,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Icon(
+              Icons.pause_circle_filled_rounded,
+              size: 44,
+              color: _UiColors.ember,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '一時停止',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: _UiColors.ink,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 3,
+              ),
+            ),
+            const SizedBox(height: 18),
+            _FantasyButton(
+              icon: Icons.play_arrow_rounded,
+              label: '再開',
+              onPressed: onResume,
+            ),
+          ],
         ),
       ),
     );
@@ -1608,79 +3617,209 @@ class _ResultOverlay extends StatelessWidget {
     required this.score,
     required this.bestScore,
     required this.kills,
+    required this.isNewRecord,
     required this.onRetry,
     required this.onTitle,
+    required this.onScoreboard,
     required this.audio,
   });
 
   final int score;
   final int bestScore;
   final int kills;
+  final bool isNewRecord;
   final VoidCallback onRetry;
   final VoidCallback onTitle;
+  final VoidCallback onScoreboard;
   final GameAudio audio;
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.black.withValues(alpha: 0.36),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 340),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(8),
+    return _GameOverlayScrim(
+      child: _GamePanel(
+        maxWidth: 340,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'GAME OVER',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: _UiColors.ember,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 5,
+              ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            const SizedBox(height: 10),
+            if (isNewRecord) ...[
+              Align(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [_UiColors.gold, _UiColors.flame],
+                    ),
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _UiColors.gold.withValues(alpha: 0.5),
+                        blurRadius: 12,
+                      ),
+                    ],
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          '新記録!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            Text.rich(
+              TextSpan(
+                text: '$score',
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: _UiColors.ink,
+                  fontWeight: FontWeight.w900,
+                  height: 1.05,
+                ),
                 children: [
-                  Text(
-                    '$score m',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  TextSpan(
+                    text: ' m',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: _UiColors.ink.withValues(alpha: 0.55),
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'ベスト $bestScore m',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xff9a3d16),
-                    ),
-                  ),
-                  Text(
-                    '撃破 $kills',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: () {
-                      unawaited(audio.playSfx('ui_accept.ogg'));
-                      onRetry();
-                    },
-                    icon: const Icon(Icons.replay_rounded),
-                    label: const Text('リトライ'),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      unawaited(audio.playSfx('ui_cancel.ogg'));
-                      onTitle();
-                    },
-                    icon: const Icon(Icons.home_rounded),
-                    label: const Text('タイトルへ戻る'),
-                  ),
                 ],
               ),
+              textAlign: TextAlign.center,
             ),
-          ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _ResultStatChip(
+                    icon: Icons.workspace_premium_rounded,
+                    label: 'ベスト',
+                    value: '$bestScore m',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ResultStatChip(
+                    icon: Icons.local_fire_department_rounded,
+                    label: '撃破',
+                    value: '$kills',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _FantasyButton(
+              icon: Icons.replay_rounded,
+              label: 'リトライ',
+              onPressed: () {
+                onRetry();
+              },
+            ),
+            const SizedBox(height: 10),
+            _FantasyButton(
+              icon: Icons.leaderboard_rounded,
+              label: 'スコアボード',
+              tone: _FantasyButtonTone.secondary,
+              height: 50,
+              onPressed: () {
+                onScoreboard();
+              },
+            ),
+            const SizedBox(height: 10),
+            _FantasyButton(
+              icon: Icons.home_rounded,
+              label: 'タイトルへ戻る',
+              tone: _FantasyButtonTone.secondary,
+              height: 50,
+              onPressed: () {
+                onTitle();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResultStatChip extends StatelessWidget {
+  const _ResultStatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _UiColors.deepGold.withValues(alpha: 0.32)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 15, color: _UiColors.ember),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: _UiColors.ink.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: _UiColors.ink,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1746,14 +3885,7 @@ class DragonGamePainter extends CustomPainter {
       );
     }
     for (final enemy in enemies) {
-      _drawAtlasSprite(
-        canvas,
-        images.enemyAtlas,
-        enemy.spriteIndex,
-        enemy.rect,
-        3,
-        flipX: enemy.shouldFlipSprite,
-      );
+      _drawEnemy(canvas, enemy);
     }
     for (final effect in effects) {
       final alpha = (1 - effect.age / effect.duration).clamp(0.0, 1.0);
@@ -1809,6 +3941,104 @@ class DragonGamePainter extends CustomPainter {
     );
   }
 
+  void _drawEnemy(Canvas canvas, EnemyModel enemy) {
+    final motion = _enemyMotion(enemy);
+    _drawAtlasSprite(
+      canvas,
+      images.enemyAtlas,
+      _enemySpriteIndex(enemy),
+      motion.rect,
+      3,
+      flipX: enemy.shouldFlipSprite,
+      rotation: motion.rotation,
+      scaleX: motion.scaleX,
+      scaleY: motion.scaleY,
+    );
+  }
+
+  int _enemySpriteIndex(EnemyModel enemy) {
+    final frame =
+        ((enemy.time * enemy.flapRate) + enemy.motionPhase).floor() % 4;
+    return switch (enemy.kind) {
+      EnemyKind.bat => switch (frame) {
+        0 => 9,
+        2 => 10,
+        _ => enemy.spriteIndex,
+      },
+      EnemyKind.gargoyle => switch (frame) {
+        0 => 11,
+        2 => 12,
+        _ => enemy.spriteIndex,
+      },
+      EnemyKind.bird || EnemyKind.slime || EnemyKind.mage => enemy.spriteIndex,
+    };
+  }
+
+  ({Rect rect, double rotation, double scaleX, double scaleY}) _enemyMotion(
+    EnemyModel enemy,
+  ) {
+    final t = enemy.time;
+    final p = enemy.motionPhase;
+    final baseRect = enemy.rect;
+    final size = enemy.size;
+
+    Rect centered(double lift) => baseRect.shift(Offset(0, lift));
+
+    Rect bottomAnchored(double lift, double scaleY) {
+      return baseRect.shift(Offset(0, size * (1 - scaleY) * 0.5 + lift));
+    }
+
+    return switch (enemy.kind) {
+      EnemyKind.bat => () {
+        final bob = math.sin(t * 7 + p) * size * 0.025;
+        return (
+          rect: centered(bob),
+          rotation: math.sin(t * 6 + p) * 0.035,
+          scaleX: 1.0,
+          scaleY: 1.0,
+        );
+      }(),
+      EnemyKind.bird => (
+        rect: baseRect,
+        rotation: 0.0,
+        scaleX: 1.0,
+        scaleY: 1.0,
+      ),
+      EnemyKind.slime => () {
+        final hop = (math.sin(t * 7.4 + p) + 1) * 0.5;
+        final lift = -math.pow(hop, 2).toDouble() * size * 0.18;
+        final compression = 1 - hop;
+        final scaleX = 1 + compression * 0.11 - hop * 0.03;
+        final scaleY = 1 - compression * 0.10 + hop * 0.05;
+        return (
+          rect: bottomAnchored(lift, scaleY),
+          rotation: math.sin(t * 5 + p) * 0.025,
+          scaleX: scaleX,
+          scaleY: scaleY,
+        );
+      }(),
+      EnemyKind.mage => () {
+        final hover = math.sin(t * 2.8 + p);
+        final pulse = (math.sin(t * 4.2 + p) + 1) * 0.5;
+        return (
+          rect: centered(hover * size * 0.045),
+          rotation: math.sin(t * 2.2 + p) * 0.035,
+          scaleX: 1 + pulse * 0.025,
+          scaleY: 1 + (1 - pulse) * 0.025,
+        );
+      }(),
+      EnemyKind.gargoyle => () {
+        final hover = math.sin(t * 2.4 + p) * size * 0.025;
+        return (
+          rect: centered(hover),
+          rotation: math.sin(t * 3 + p) * 0.025,
+          scaleX: 1.0,
+          scaleY: 1.0,
+        );
+      }(),
+    };
+  }
+
   void _drawAtlasSprite(
     Canvas canvas,
     ui.Image image,
@@ -1818,6 +4048,8 @@ class DragonGamePainter extends CustomPainter {
     Paint? paint,
     bool flipX = false,
     double rotation = 0,
+    double scaleX = 1,
+    double scaleY = 1,
   }) {
     final col = index % columns;
     final row = index ~/ columns;
@@ -1828,7 +4060,7 @@ class DragonGamePainter extends CustomPainter {
       enemyCellSize.height,
     );
     final spritePaint = paint ?? (Paint()..filterQuality = FilterQuality.high);
-    if (!flipX && rotation == 0) {
+    if (!flipX && rotation == 0 && scaleX == 1 && scaleY == 1) {
       canvas.drawImageRect(image, src, dst, spritePaint);
       return;
     }
@@ -1838,9 +4070,7 @@ class DragonGamePainter extends CustomPainter {
     if (rotation != 0) {
       canvas.rotate(rotation);
     }
-    if (flipX) {
-      canvas.scale(-1, 1);
-    }
+    canvas.scale(flipX ? -scaleX : scaleX, scaleY);
     canvas.drawImageRect(
       image,
       src,
@@ -1859,28 +4089,110 @@ class DragonGamePainter extends CustomPainter {
   }
 
   void _drawHud(Canvas canvas, Size size) {
-    final textStyle = TextStyle(
-      color: Colors.white,
-      fontSize: math.max(22, size.width * 0.06),
-      fontWeight: FontWeight.w900,
-      shadows: const [
-        Shadow(offset: Offset(0, 2), blurRadius: 4, color: Colors.black54),
-      ],
+    final scoreFontSize = math.max(24.0, size.width * 0.065);
+    _drawOutlinedText(
+      canvas,
+      text: '${score.round()} m',
+      fontSize: scoreFontSize,
+      center: Offset(size.width / 2, 30 + scoreFontSize / 2),
     );
-    final scoreText = TextPainter(
-      text: TextSpan(text: '${score.round()} m', style: textStyle),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    scoreText.paint(canvas, Offset((size.width - scoreText.width) / 2, 30));
+    _drawKillChip(canvas, size);
+  }
 
-    final killText = TextPainter(
+  void _drawOutlinedText(
+    Canvas canvas, {
+    required String text,
+    required double fontSize,
+    required Offset center,
+  }) {
+    final baseStyle = TextStyle(
+      fontFamily: 'MPLUSRounded1c',
+      fontSize: fontSize,
+      fontWeight: FontWeight.w900,
+      height: 1,
+    );
+    final stroke = TextPainter(
       text: TextSpan(
-        text: '撃破 $kills',
-        style: textStyle.copyWith(fontSize: math.max(14, size.width * 0.035)),
+        text: text,
+        style: baseStyle.copyWith(
+          foreground: Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = fontSize * 0.16
+            ..strokeJoin = StrokeJoin.round
+            ..color = _UiColors.ink.withValues(alpha: 0.85),
+          shadows: const [
+            Shadow(offset: Offset(0, 3), blurRadius: 6, color: Colors.black38),
+          ],
+        ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    killText.paint(canvas, Offset(size.width - killText.width - 16, 40));
+    final origin = center - Offset(stroke.width / 2, stroke.height / 2);
+    stroke.paint(canvas, origin);
+
+    final fillRect = origin & Size(stroke.width, stroke.height);
+    final fill = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: baseStyle.copyWith(
+          foreground: Paint()
+            ..shader = const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.white, Color(0xffffe2a8)],
+            ).createShader(fillRect),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    fill.paint(canvas, origin);
+  }
+
+  void _drawKillChip(Canvas canvas, Size size) {
+    final fontSize = math.max(14.0, size.width * 0.036);
+    final text = TextPainter(
+      text: TextSpan(
+        text: '撃破 $kills',
+        style: TextStyle(
+          fontFamily: 'MPLUSRounded1c',
+          color: Colors.white,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w800,
+          height: 1,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final chipWidth = text.width + 26;
+    final chipHeight = text.height + 14;
+    final chipRect = Rect.fromLTWH(
+      size.width - chipWidth - 14,
+      36,
+      chipWidth,
+      chipHeight,
+    );
+    final rrect = RRect.fromRectAndRadius(
+      chipRect,
+      Radius.circular(chipHeight / 2),
+    );
+    canvas.drawRRect(
+      rrect,
+      Paint()..color = _UiColors.ink.withValues(alpha: 0.45),
+    );
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4
+        ..color = _UiColors.gold.withValues(alpha: 0.6),
+    );
+    text.paint(
+      canvas,
+      Offset(
+        chipRect.left + (chipWidth - text.width) / 2,
+        chipRect.top + (chipHeight - text.height) / 2,
+      ),
+    );
   }
 
   @override
@@ -1914,7 +4226,7 @@ class GameImages {
   static Future<GameImages> load() async {
     final sky = await _loadImage('assets/images/sky.png');
     final dragon = await _loadImage('assets/images/dragon_atlas.png');
-    final enemy = await _loadImage('assets/images/enemy_atlas.png');
+    final enemy = await _loadImage('assets/images/enemy_atlas_flap.png');
     return GameImages(sky: sky, dragonAtlas: dragon, enemyAtlas: enemy);
   }
 
@@ -1993,6 +4305,7 @@ class EnemyModel {
     required this.amplitude,
     required this.phase,
     required this.waveRate,
+    required this.motionPhase,
     required this.shootTimer,
   });
 
@@ -2007,9 +4320,16 @@ class EnemyModel {
   final double amplitude;
   final double phase;
   final double waveRate;
+  final double motionPhase;
   double shootTimer;
   double time = 0;
   bool dead = false;
+
+  double get flapRate => switch (kind) {
+    EnemyKind.bat => 20,
+    EnemyKind.gargoyle => 7,
+    EnemyKind.bird || EnemyKind.slime || EnemyKind.mage => 0,
+  };
 
   bool get shouldFlipSprite => switch (kind) {
     EnemyKind.bat || EnemyKind.mage => true,
@@ -2068,29 +4388,52 @@ class EffectModel {
 }
 
 class AppSettings {
-  const AppSettings({required this.playerName, required this.volume});
+  const AppSettings({
+    required this.playerId,
+    required this.playerName,
+    required this.volume,
+    required this.adsRemoved,
+    this.accountProvider,
+  });
 
   static const int maxPlayerNameLength = 14;
+  static const int maxPlayerIdLength = 64;
   static const String fallbackPlayerName = 'Dragon';
   static final RegExp _generatedDefaultNamePattern = RegExp(r'^Dragon(\d{8})$');
   static final RegExp _legacyGeneratedDefaultNamePattern = RegExp(
     r'^Player(\d{8})$',
   );
+  static final RegExp _playerIdAllowedPattern = RegExp(r'[^a-zA-Z0-9._:-]');
 
+  final String playerId;
   final String playerName;
   final double volume;
+  final bool adsRemoved;
+  final AccountProvider? accountProvider;
 
   static AppSettings defaults() {
-    return AppSettings(playerName: randomDefaultPlayerName(), volume: 0.75);
+    return AppSettings(
+      playerId: randomPlayerId(),
+      playerName: randomDefaultPlayerName(),
+      volume: 0.75,
+      adsRemoved: false,
+    );
   }
 
   static AppSettings fromPrefs(SharedPreferences prefs) {
+    final storedId = prefs.getString('playerId');
     final storedName = prefs.getString('playerName');
+    final cleanId = cleanPlayerId(storedId ?? '');
     return AppSettings(
+      playerId: cleanId.isEmpty ? randomPlayerId() : cleanId,
       playerName: storedName == null
           ? randomDefaultPlayerName()
           : normalizeGeneratedPlayerName(storedName),
       volume: (prefs.getDouble('volume') ?? 0.75).clamp(0.0, 1.0),
+      adsRemoved: prefs.getBool('adsRemoved') ?? false,
+      accountProvider: AccountProvider.fromApiValue(
+        prefs.getString('accountProvider'),
+      ),
     );
   }
 
@@ -2098,6 +4441,29 @@ class AppSettings {
     final random = math.Random();
     final digits = List.generate(8, (_) => random.nextInt(10)).join();
     return 'Dragon$digits';
+  }
+
+  static String randomPlayerId() {
+    late final math.Random random;
+    try {
+      random = math.Random.secure();
+    } on UnsupportedError {
+      random = math.Random();
+    }
+    final bytes = List.generate(16, (_) => random.nextInt(256));
+    final hex = bytes
+        .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+        .join();
+    return 'p$hex';
+  }
+
+  static String cleanPlayerId(String value) {
+    return value
+        .replaceAll(_playerIdAllowedPattern, '')
+        .trim()
+        .characters
+        .take(maxPlayerIdLength)
+        .toString();
   }
 
   static String normalizeGeneratedPlayerName(String value) {
@@ -2127,53 +4493,93 @@ class AppSettings {
   }
 
   Future<void> save(SharedPreferences prefs) async {
+    await prefs.setString('playerId', cleanPlayerId(playerId));
     await prefs.setString('playerName', cleanName(playerName));
     await prefs.setDouble('volume', volume);
+    await prefs.setBool('adsRemoved', adsRemoved);
+    final provider = accountProvider;
+    if (provider == null) {
+      await prefs.remove('accountProvider');
+    } else {
+      await prefs.setString('accountProvider', provider.apiValue);
+    }
   }
 
-  AppSettings copyWith({String? playerName, double? volume}) {
+  AppSettings copyWith({
+    String? playerId,
+    String? playerName,
+    double? volume,
+    bool? adsRemoved,
+    AccountProvider? accountProvider,
+    bool clearAccountProvider = false,
+  }) {
     return AppSettings(
+      playerId: playerId ?? this.playerId,
       playerName: playerName ?? this.playerName,
       volume: volume ?? this.volume,
+      adsRemoved: adsRemoved ?? this.adsRemoved,
+      accountProvider: clearAccountProvider
+          ? null
+          : accountProvider ?? this.accountProvider,
     );
   }
 }
 
 class ScoreEntry {
   const ScoreEntry({
+    required this.playerId,
     required this.name,
     required this.score,
     required this.kills,
     required this.date,
     required this.version,
+    this.runToken,
   });
 
+  final String playerId;
   final String name;
   final int score;
   final int kills;
   final DateTime date;
   final String version;
+  final String? runToken;
 
-  Map<String, Object> toJson() {
-    return {
+  Map<String, Object> toJson({bool includeRunToken = true}) {
+    final json = <String, Object>{
+      'playerId': AppSettings.cleanPlayerId(playerId),
       'name': AppSettings.scoreName(name),
       'score': score,
       'kills': kills,
       'date': date.toIso8601String(),
       'version': version,
     };
+    final token = runToken;
+    if (includeRunToken && token != null && token.isNotEmpty) {
+      json['runToken'] = token;
+    }
+    return json;
   }
 
   static ScoreEntry fromJson(Map<String, dynamic> json) {
     return ScoreEntry(
+      playerId: AppSettings.cleanPlayerId(
+        '${json['playerId'] ?? json['player_id'] ?? ''}',
+      ),
       name: AppSettings.scoreName('${json['name'] ?? ''}'),
-      score: (json['score'] as num?)?.round() ?? 0,
-      kills: (json['kills'] as num?)?.round() ?? 0,
+      score: _intFromJson(json['score']),
+      kills: _intFromJson(json['kills']),
       date:
           DateTime.tryParse('${json['date'] ?? ''}') ??
           DateTime.fromMillisecondsSinceEpoch(0),
       version: '${json['version'] ?? _gameVersion}',
+      runToken: null,
     );
+  }
+
+  static int _intFromJson(Object? value) {
+    if (value is num) return value.round();
+    if (value is String) return num.tryParse(value)?.round() ?? 0;
+    return 0;
   }
 }
 
@@ -2189,19 +4595,160 @@ class ScoreboardData {
   final String message;
 }
 
+enum AccountProvider {
+  google('google', 'Google'),
+  apple('apple', 'Apple');
+
+  const AccountProvider(this.apiValue, this.label);
+
+  final String apiValue;
+  final String label;
+
+  static AccountProvider? fromApiValue(String? value) {
+    if (value == null) return null;
+    for (final provider in values) {
+      if (provider.apiValue == value) return provider;
+    }
+    return null;
+  }
+}
+
+class ProviderCredential {
+  const ProviderCredential({
+    required this.provider,
+    required this.idToken,
+    required this.displayName,
+  });
+
+  final AccountProvider provider;
+  final String idToken;
+  final String displayName;
+}
+
+class AuthenticatedPlayer {
+  const AuthenticatedPlayer({
+    required this.provider,
+    required this.playerId,
+    required this.name,
+  });
+
+  final AccountProvider provider;
+  final String playerId;
+  final String name;
+
+  static AuthenticatedPlayer fromJson(Map<String, dynamic> json) {
+    final provider =
+        AccountProvider.fromApiValue('${json['provider'] ?? ''}') ??
+        AccountProvider.google;
+    final playerId = AppSettings.cleanPlayerId('${json['playerId'] ?? ''}');
+    final name = AppSettings.scoreName('${json['name'] ?? ''}');
+    if (playerId.isEmpty) {
+      throw const FormatException('invalid_authenticated_player_response');
+    }
+    return AuthenticatedPlayer(
+      provider: provider,
+      playerId: playerId,
+      name: name,
+    );
+  }
+}
+
+class AccountSignIn {
+  static Future<void>? _googleInit;
+
+  static Future<ProviderCredential> signInWithGoogle() async {
+    await _ensureGoogleInitialized();
+    if (!GoogleSignIn.instance.supportsAuthenticate()) {
+      throw UnsupportedError('google_sign_in_unavailable');
+    }
+    final lightweightAttempt = GoogleSignIn.instance
+        .attemptLightweightAuthentication();
+    final lightweightAccount = lightweightAttempt == null
+        ? null
+        : await lightweightAttempt;
+    final account =
+        lightweightAccount ?? await GoogleSignIn.instance.authenticate();
+    return _googleCredentialFromAccount(account);
+  }
+
+  static Future<ProviderCredential> signInWithApple() async {
+    if (!await SignInWithApple.isAvailable()) {
+      throw UnsupportedError('apple_sign_in_unavailable');
+    }
+    final credential = await SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+    );
+    final idToken = credential.identityToken;
+    if (idToken == null || idToken.isEmpty) {
+      throw StateError('missing_apple_identity_token');
+    }
+    final names = [
+      credential.givenName,
+      credential.familyName,
+    ].whereType<String>().where((value) => value.trim().isNotEmpty);
+    return ProviderCredential(
+      provider: AccountProvider.apple,
+      idToken: idToken,
+      displayName: names.join(' '),
+    );
+  }
+
+  static Future<void> signOut(AccountProvider provider) async {
+    // Apple にはサインアウトAPIがないため、ローカル状態の破棄のみで完結する。
+    if (provider != AccountProvider.google) return;
+    await _ensureGoogleInitialized();
+    await GoogleSignIn.instance.signOut();
+  }
+
+  static Future<void> _ensureGoogleInitialized() {
+    final future = _googleInit;
+    if (future != null) return future;
+    final init = GoogleSignIn.instance
+        .initialize(
+          clientId: _googleClientId.isEmpty ? null : _googleClientId,
+          serverClientId: _googleServerClientId.isEmpty
+              ? null
+              : _googleServerClientId,
+        )
+        .catchError((Object error) {
+          _googleInit = null;
+          throw error;
+        });
+    _googleInit = init;
+    return init;
+  }
+
+  static ProviderCredential _googleCredentialFromAccount(
+    GoogleSignInAccount account,
+  ) {
+    final idToken = account.authentication.idToken;
+    if (idToken == null || idToken.isEmpty) {
+      throw StateError('missing_google_id_token');
+    }
+    return ProviderCredential(
+      provider: AccountProvider.google,
+      idToken: idToken,
+      displayName: account.displayName ?? '',
+    );
+  }
+}
+
 class ScoreStore {
   static const int maxLeaderboardEntries = 10000;
 
   static List<ScoreEntry> loadLocalScores(SharedPreferences prefs) {
     final text = prefs.getString('scores');
     if (text == null || text.isEmpty) return const [];
-    final value = jsonDecode(text);
-    if (value is! List) return const [];
-    return value
-        .whereType<Map<String, dynamic>>()
-        .map(ScoreEntry.fromJson)
-        .toList()
-      ..sort((a, b) => b.score.compareTo(a.score));
+    try {
+      final value = jsonDecode(text);
+      if (value is! List) return const [];
+      return _parseScoreEntryList(value).take(20).toList();
+    } catch (_) {
+      return const [];
+    }
   }
 
   static Future<List<ScoreEntry>> addLocalScore(
@@ -2213,22 +4760,35 @@ class ScoreStore {
     final trimmed = scores.take(20).toList();
     await prefs.setString(
       'scores',
-      jsonEncode(trimmed.map((score) => score.toJson()).toList()),
+      jsonEncode(
+        trimmed.map((score) => score.toJson(includeRunToken: false)).toList(),
+      ),
     );
     return trimmed;
   }
 
-  static Future<ScoreboardData> loadScoreboard(List<ScoreEntry> local) async {
+  static Future<ScoreboardData> loadScoreboard(
+    List<ScoreEntry> local, {
+    ScoreboardPeriod period = ScoreboardPeriod.allTime,
+    List<ScoreEntry>? cachedOnlineScores,
+  }) async {
     try {
-      final online = await _loadOnline();
+      final online = await _loadOnline(period);
       return ScoreboardData(
         onlineScores: online.take(maxLeaderboardEntries).toList(),
-        sourceLabel: _leaderboardUrl.isEmpty ? '同梱ランキング' : 'オンライン',
-        message: _leaderboardUrl.isEmpty
-            ? 'LEADERBOARD_URL 未設定のため、同梱ランキングを表示しています。'
+        sourceLabel: _scoreSubmitUrl.isEmpty ? '同梱ランキング' : 'オンライン',
+        message: _scoreSubmitUrl.isEmpty
+            ? 'SCORE_SUBMIT_URL 未設定のため、同梱ランキングを表示しています。'
             : '',
       );
     } catch (_) {
+      if (cachedOnlineScores != null) {
+        return ScoreboardData(
+          onlineScores: cachedOnlineScores.take(maxLeaderboardEntries).toList(),
+          sourceLabel: 'オンライン',
+          message: '最新取得に失敗したため、直近の投稿結果を表示しています。',
+        );
+      }
       return ScoreboardData(
         onlineScores: local.take(maxLeaderboardEntries).toList(),
         sourceLabel: 'ローカル',
@@ -2274,13 +4834,53 @@ class ScoreStore {
     return !scoreDay.isBefore(firstDay) && !scoreDay.isAfter(referenceDay);
   }
 
-  static Future<List<ScoreEntry>> _loadOnline() async {
-    if (_leaderboardUrl.isEmpty) return _loadBundled();
-    final response = await http.get(Uri.parse(_leaderboardUrl));
+  static Future<List<ScoreEntry>> _loadOnline(ScoreboardPeriod period) async {
+    if (_scoreSubmitUrl.isEmpty) {
+      return _loadBundled();
+    }
+    return _loadRemote(
+      _scoreboardUriForPeriod(Uri.parse(_scoreSubmitUrl), period),
+    );
+  }
+
+  static Future<List<ScoreEntry>> _loadRemote(Uri uri) async {
+    final response = await http.get(uri).timeout(const Duration(seconds: 10));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('leaderboard http ${response.statusCode}');
     }
     return _parseScores(response.body);
+  }
+
+  static Uri _scoreboardUriForPeriod(Uri uri, ScoreboardPeriod period) {
+    final query = {...uri.queryParameters, 'period': period.queryValue};
+    final range = _periodRange(period);
+    if (range != null) {
+      query['from'] = range.from.toIso8601String();
+      query['to'] = range.to.toIso8601String();
+    }
+    return uri.replace(queryParameters: query);
+  }
+
+  static ({DateTime from, DateTime to})? _periodRange(
+    ScoreboardPeriod period, {
+    DateTime? now,
+  }) {
+    if (period == ScoreboardPeriod.allTime) return null;
+    final reference = (now ?? DateTime.now()).toLocal();
+    final referenceDay = DateTime(
+      reference.year,
+      reference.month,
+      reference.day,
+    );
+    final days = switch (period) {
+      ScoreboardPeriod.today => 1,
+      ScoreboardPeriod.week => 7,
+      ScoreboardPeriod.month => 30,
+      ScoreboardPeriod.allTime => 0,
+    };
+    final from = referenceDay.subtract(Duration(days: days - 1));
+    final to = referenceDay.add(const Duration(days: 1));
+    return (from: from.toUtc(), to: to.toUtc());
   }
 
   static Future<List<ScoreEntry>> _loadBundled() async {
@@ -2289,17 +4889,58 @@ class ScoreStore {
   }
 
   static List<ScoreEntry> _parseScores(String text) {
-    final json = jsonDecode(text);
+    return _parseScoresFromJson(jsonDecode(text));
+  }
+
+  static List<ScoreEntry> _parseScoresFromJson(Object? json) {
     final list = json is Map ? json['scores'] : json;
     if (list is! List) return const [];
-    final scores =
-        list.whereType<Map<String, dynamic>>().map(ScoreEntry.fromJson).toList()
-          ..sort((a, b) => b.score.compareTo(a.score));
+    final scores = _parseScoreEntryList(list);
     return scores.take(maxLeaderboardEntries).toList();
   }
 
-  static Future<void> submitScore(ScoreEntry entry) async {
-    if (_scoreSubmitUrl.isEmpty) return;
+  static List<ScoreEntry> _parseScoreEntryList(List<Object?> list) {
+    final scores = <ScoreEntry>[];
+    for (final item in list) {
+      if (item is! Map) continue;
+      try {
+        scores.add(ScoreEntry.fromJson(Map<String, dynamic>.from(item)));
+      } catch (_) {
+        // Skip malformed rows so one bad score cannot break startup.
+      }
+    }
+    return scores..sort((a, b) => b.score.compareTo(a.score));
+  }
+
+  static Future<String?> startRankedRun(AppSettings settings) async {
+    if (_scoreSubmitUrl.isEmpty) return null;
+    try {
+      final response = await http
+          .post(
+            Uri.parse(_scoreSubmitUrl),
+            headers: {'content-type': 'application/json'},
+            body: jsonEncode({
+              'action': 'startRun',
+              'playerId': AppSettings.cleanPlayerId(settings.playerId),
+            }),
+          )
+          .timeout(const Duration(seconds: 3));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+      final body = jsonDecode(response.body);
+      if (body is! Map) return null;
+      final token = '${body['runToken'] ?? ''}'.trim();
+      return token.isEmpty ? null : token;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<List<ScoreEntry>?> submitScore(ScoreEntry entry) async {
+    if (_scoreSubmitUrl.isEmpty) return null;
+    final token = entry.runToken;
+    if (token == null || token.isEmpty) return null;
     try {
       final response = await http
           .post(
@@ -2311,12 +4952,76 @@ class ScoreStore {
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw StateError('score submit http ${response.statusCode}');
       }
-    } catch (_) {}
+      final scores = _parseScores(response.body);
+      return scores.isEmpty ? null : scores;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<AuthenticatedPlayer> authenticateProvider({
+    required AppSettings settings,
+    required ProviderCredential credential,
+  }) async {
+    final response = await _postAction({
+      'action': 'authenticateProvider',
+      'provider': credential.provider.apiValue,
+      'idToken': credential.idToken,
+      'playerId': AppSettings.cleanPlayerId(settings.playerId),
+      'name': AppSettings.scoreName(
+        settings.playerName.isEmpty
+            ? credential.displayName
+            : settings.playerName,
+      ),
+    });
+    final player = response['player'];
+    if (player is! Map) {
+      throw const FormatException('invalid_authenticated_player_response');
+    }
+    return AuthenticatedPlayer.fromJson(Map<String, dynamic>.from(player));
+  }
+
+  static Future<Map<String, dynamic>> _postAction(
+    Map<String, Object> body,
+  ) async {
+    if (_scoreSubmitUrl.isEmpty) {
+      throw StateError('score_submit_url_not_configured');
+    }
+    final response = await http
+        .post(
+          Uri.parse(_scoreSubmitUrl),
+          headers: {'content-type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 10));
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map) {
+      throw const FormatException('invalid_action_response');
+    }
+    final map = Map<String, dynamic>.from(decoded);
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        map['ok'] != true) {
+      throw StateError('${map['error'] ?? 'action_failed'}');
+    }
+    return map;
   }
 }
 
 class GameAudio {
   static const int _sfxPoolSize = 4;
+  // Ogg Vorbis を再生できないプラットフォーム向けの代替ファイル。
+  // (just_audio_windows・iOS/macOS の AVFoundation・Safari は Vorbis 非対応)
+  static const Map<String, String> _oggFallbackAudioFileOverrides = {
+    'enemy_explosion_ultimate_snap_boom_007.ogg':
+        'enemy_explosion_ultimate_snap_boom_007.wav',
+    'game_bgm_intro.ogg': 'game_bgm_intro.flac',
+    'game_bgm_loop.ogg': 'game_bgm_loop.flac',
+  };
+
+  @visibleForTesting
+  static Map<String, String> get oggFallbackAudioFileOverrides =>
+      _oggFallbackAudioFileOverrides;
 
   final ja.AudioPlayer _music = ja.AudioPlayer(
     handleInterruptions: false,
@@ -2346,13 +5051,18 @@ class GameAudio {
   String? _requestedMusicIntroFile;
   String? _requestedMusicFile;
   bool _requestedMusicLoops = false;
+  bool _musicSourceReady = false;
   bool _appActive = true;
+  bool _audioSessionActive = false;
+  // 全画面広告の表示中。ライフサイクル由来の再開経路からBGMが
+  // 再生されないよう、resumeMusic() が呼ばれるまで保留する。
+  bool _musicHeldForAd = false;
   bool _disposed = false;
 
   GameAudio() {
     unawaited(_configureMusicSession());
     _musicStateSubscription = _music.playerStateStream.listen((state) {
-      if (_disposed || !_appActive) return;
+      if (_disposed || !_appActive || _musicHeldForAd) return;
       if (!_requestedMusicLoops || _requestedMusicFile == null) return;
       if (state.processingState == ja.ProcessingState.completed) {
         unawaited(playMusic(_requestedMusicFile!, loop: true));
@@ -2377,8 +5087,23 @@ class GameAudio {
     );
   }
 
+  Future<void> preloadSfx(Iterable<String> files) async {
+    await Future.wait(files.toSet().map(_ensureSfxPool));
+  }
+
+  static bool get _playsOggNatively =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  static String _audioAssetPath(String file) {
+    final platformFile = _playsOggNatively
+        ? file
+        : _oggFallbackAudioFileOverrides[file] ?? file;
+    return 'assets/audio/$platformFile';
+  }
+
   Future<void> playMusic(String file, {required bool loop}) {
     if (_disposed) return Future<void>.value();
+    _musicHeldForAd = false;
     _requestedMusicIntroFile = null;
     _requestedMusicFile = file;
     _requestedMusicLoops = loop;
@@ -2390,20 +5115,21 @@ class GameAudio {
         return;
       }
       await _configureMusicSession();
-      if (_disposed || generation != _musicGeneration) return;
+      if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _setAndroidAudioAttributes(_music);
-      if (_disposed || generation != _musicGeneration) return;
+      if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _music.setLoopMode(loop ? ja.LoopMode.one : ja.LoopMode.off);
-      if (_disposed || generation != _musicGeneration) return;
+      if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _music.setAudioSource(
-        ja.AudioSource.asset('assets/audio/$file'),
+        createGameAudioSource(_audioAssetPath(file)),
         preload: true,
       );
-      if (_disposed || generation != _musicGeneration) return;
+      _musicSourceReady = true;
+      if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _music.setVolume(_settings.volume * 0.55);
-      if (_disposed || generation != _musicGeneration) return;
+      if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _music.seek(Duration.zero);
-      if (_disposed || generation != _musicGeneration) return;
+      if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _music.play();
     });
   }
@@ -2413,6 +5139,7 @@ class GameAudio {
     required String loopFile,
   }) {
     if (_disposed) return Future<void>.value();
+    _musicHeldForAd = false;
     _requestedMusicIntroFile = introFile;
     _requestedMusicFile = loopFile;
     _requestedMusicLoops = true;
@@ -2424,23 +5151,24 @@ class GameAudio {
         return;
       }
       await _configureMusicSession();
-      if (_disposed || generation != _musicGeneration) return;
+      if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _setAndroidAudioAttributes(_music);
-      if (_disposed || generation != _musicGeneration) return;
+      if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _music.setLoopMode(ja.LoopMode.off);
-      if (_disposed || generation != _musicGeneration) return;
+      if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _music.setAudioSources(
         [
-          ja.AudioSource.asset('assets/audio/$introFile'),
-          ja.AudioSource.asset('assets/audio/$loopFile'),
+          createGameAudioSource(_audioAssetPath(introFile)),
+          createGameAudioSource(_audioAssetPath(loopFile)),
         ],
         preload: true,
         initialIndex: 0,
         initialPosition: Duration.zero,
       );
-      if (_disposed || generation != _musicGeneration) return;
+      _musicSourceReady = true;
+      if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _music.setVolume(_settings.volume * 0.55);
-      if (_disposed || generation != _musicGeneration) return;
+      if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _music.play();
     });
   }
@@ -2459,7 +5187,11 @@ class GameAudio {
   }
 
   Future<void> _enqueueMusic(Future<void> Function() operation) {
-    final next = _musicQueue.then((_) => operation()).catchError((Object _) {});
+    final next = _musicQueue.then((_) => operation()).catchError((
+      Object error,
+    ) {
+      _logAudioError('music operation', error);
+    });
     _musicQueue = next;
     return next;
   }
@@ -2479,29 +5211,102 @@ class GameAudio {
     } catch (_) {}
   }
 
+  Future<void> _activateAudioSession() async {
+    if (_audioSessionActive) return;
+    try {
+      final session = await audio_session.AudioSession.instance;
+      await session.configure(_musicSessionConfiguration);
+      _audioSessionActive = await session.setActive(true);
+    } on MissingPluginException {
+      // Desktop platforms do not provide audio_session; just_audio can still play.
+      _audioSessionActive = true;
+    } catch (error) {
+      _logAudioError('activate session', error);
+    }
+  }
+
   Future<void> setAppActive(bool active) {
     if (_disposed) return Future<void>.value();
-    if (active && _appActive) return Future<void>.value();
+    if (active == _appActive) return Future<void>.value();
     _appActive = active;
     if (!active) {
-      _musicGeneration++;
       final generation = _musicGeneration;
-      unawaited(_haltMusicNow(generation, deactivateSession: true));
+      unawaited(_pauseMusicForBackground(generation));
       return _enqueueMusic(() async {
-        if (_disposed || generation != _musicGeneration) return;
-        await _haltMusicNow(generation, deactivateSession: true);
+        if (_disposed || generation != _musicGeneration || _appActive) return;
+        await _pauseMusicForBackground(generation);
       });
     }
 
-    final file = _requestedMusicFile;
-    if (file == null || !_requestedMusicLoops) {
+    if (_musicHeldForAd) {
+      // 広告表示中に 'resumed' 相当のイベントが来てもBGMは再開しない。
+      // 広告が閉じたときの resumeMusic() が再開を担う。
       return Future<void>.value();
     }
-    final introFile = _requestedMusicIntroFile;
-    if (introFile != null) {
-      return playMusicIntroThenLoop(introFile: introFile, loopFile: file);
+    final file = _requestedMusicFile;
+    if (file == null) {
+      return Future<void>.value();
     }
-    return playMusic(file, loop: true);
+    if (!_musicSourceReady) {
+      final introFile = _requestedMusicIntroFile;
+      if (introFile != null && _requestedMusicLoops) {
+        return playMusicIntroThenLoop(introFile: introFile, loopFile: file);
+      }
+      return playMusic(file, loop: _requestedMusicLoops);
+    }
+    return _resumeMusicAfterBackground();
+  }
+
+  Future<void> _pauseMusicForBackground(int generation) async {
+    if (_disposed || generation != _musicGeneration) return;
+    try {
+      await _music.pause();
+    } catch (_) {}
+    if (_disposed || generation != _musicGeneration || _appActive) return;
+    try {
+      final session = await audio_session.AudioSession.instance;
+      await session.setActive(false);
+    } catch (_) {}
+    _audioSessionActive = false;
+  }
+
+  Future<void> pauseMusic() {
+    if (_disposed) return Future<void>.value();
+    _musicHeldForAd = true;
+    // キューに処理が滞留していても確実に止まるよう、即時にも停止する。
+    unawaited(
+      _music.pause().catchError((Object error) {
+        _logAudioError('pause music', error);
+      }),
+    );
+    final generation = _musicGeneration;
+    return _enqueueMusic(() async {
+      if (_disposed || generation != _musicGeneration || !_musicHeldForAd) {
+        return;
+      }
+      try {
+        await _music.pause();
+      } catch (_) {}
+    });
+  }
+
+  Future<void> resumeMusic() {
+    if (_disposed) return Future<void>.value();
+    _musicHeldForAd = false;
+    return _resumeMusicAfterBackground();
+  }
+
+  Future<void> _resumeMusicAfterBackground() {
+    return _enqueueMusic(() async {
+      if (_disposed || !_appActive || _musicHeldForAd || !_musicSourceReady) {
+        return;
+      }
+      await _activateAudioSession();
+      if (_disposed || !_appActive || _musicHeldForAd) return;
+      await _music.setVolume(_settings.volume * 0.55);
+      if (_disposed || !_appActive || _musicHeldForAd) return;
+      await _music.play();
+    });
   }
 
   Future<void> playSfx(String file, {double volumeScale = 1}) {
@@ -2512,15 +5317,48 @@ class GameAudio {
   }
 
   Future<void> _playSfx(String file, double volume) async {
+    final pool = await _ensureSfxPool(file);
+    if (pool == null || _disposed || !_appActive) return;
     try {
-      final pool = _sfxPools[file] ??= _createSfxPool(file);
-      await pool.ready;
+      await _activateAudioSession();
       if (_disposed || !_appActive) return;
       final player = pool.nextPlayer();
-      await player.setVolume(volume);
+      if (player.volume != volume) {
+        await player.setVolume(volume);
+      }
+      if (player.playing) {
+        await player.pause();
+      }
       await player.seek(Duration.zero);
-      await player.play();
-    } catch (_) {}
+      if (_disposed || !_appActive) return;
+      unawaited(
+        player.play().catchError((Object error) {
+          _logAudioError('play $file', error);
+        }),
+      );
+    } catch (error) {
+      _logAudioError('play $file', error);
+    }
+  }
+
+  Future<_SfxPool?> _ensureSfxPool(String file) async {
+    if (_disposed) return null;
+    final existing = _sfxPools[file];
+    final pool = existing ?? _createSfxPool(file);
+    if (existing == null) {
+      _sfxPools[file] = pool;
+    }
+    try {
+      await pool.ready;
+      return pool;
+    } catch (error) {
+      _logAudioError('load $file', error);
+      if (identical(_sfxPools[file], pool)) {
+        _sfxPools.remove(file);
+      }
+      unawaited(pool.dispose());
+      return null;
+    }
   }
 
   _SfxPool _createSfxPool(String file) {
@@ -2532,17 +5370,23 @@ class GameAudio {
         useLazyPreparation: false,
       ),
     );
-    final ready = Future.wait(
-      players.map((player) async {
+    final ready = () async {
+      for (final player in players) {
         await _setAndroidAudioAttributes(player);
         await player.setLoopMode(ja.LoopMode.off);
         await player.setAudioSource(
-          ja.AudioSource.asset('assets/audio/$file'),
+          createGameAudioSource(_audioAssetPath(file)),
           preload: true,
         );
-      }),
-    );
+      }
+    }();
     return _SfxPool(players: players, ready: ready);
+  }
+
+  void _logAudioError(String action, Object error) {
+    if (kDebugMode) {
+      debugPrint('Audio $action failed: $error');
+    }
   }
 
   Future<void> _haltMusic({bool deactivateSession = false}) {
@@ -2568,12 +5412,14 @@ class GameAudio {
     try {
       await _music.stop();
     } catch (_) {}
+    _musicSourceReady = false;
     if (_disposed || generation != _musicGeneration) return;
     if (!deactivateSession) return;
     try {
       final session = await audio_session.AudioSession.instance;
       await session.setActive(false);
     } catch (_) {}
+    _audioSessionActive = false;
   }
 
   void dispose() {

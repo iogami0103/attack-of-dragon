@@ -1,0 +1,15 @@
+Android upload key certificate fingerprints
+Generated: 2026-07-04 05:34 JST
+Alias: upload
+Android application ID: io.github.iogami0103.attackofthedragon
+Owner: CN=Attack of the Dragon, OU=Game, O=Attack of the Dragon, L=Tokyo, ST=Tokyo, C=JP
+Valid until: 2053-11-19 05:34 JST
+
+SHA-1:
+32:87:36:3A:5E:9E:5E:E4:12:6F:37:91:36:28:EA:93:EB:E9:E5:2B
+
+SHA-256:
+34:E4:47:2A:DC:25:3F:37:BF:1A:39:A1:67:28:DE:D6:72:05:B5:22:03:E7:0B:41:E4:C3:B3:09:C7:E3:C4:89
+
+Use the SHA-1 value when registering the Android OAuth client for Google sign-in.
+If the upload keystore is regenerated, update this file and the external console settings together.

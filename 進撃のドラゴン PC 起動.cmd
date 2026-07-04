@@ -1,10 +1,13 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 
-set "PROJECT_DIR=%~dp0"
+set "SOURCE_DIR=%~dp0"
+set "SOURCE_DIR_SLASH=%SOURCE_DIR:\=/%"
 set "RTK=C:\Users\iogam\bin\rtk.exe"
-set "LEADERBOARD_URL=https://iogami0103.github.io/attack-of-dragon/scores/leaderboard.json"
-set "SCORE_SUBMIT_URL=https://attack-of-dragon-score-submit.i-ogami-0103.workers.dev"
+set "WINDOWS_BUILD_DIR=%SOURCE_DIR%build\windows"
+set "WINDOWS_CACHE=%WINDOWS_BUILD_DIR%\x64\CMakeCache.txt"
+set "EXE_PATH=%SOURCE_DIR%build\windows\x64\runner\Release\attack_of_the_dragon.exe"
+set "EXIT_CODE=0"
 
 if not exist "%RTK%" (
   echo rtk.exe was not found:
@@ -13,28 +16,74 @@ if not exist "%RTK%" (
   exit /b 1
 )
 
-if not exist "%PROJECT_DIR%pubspec.yaml" (
+if not exist "%SOURCE_DIR%pubspec.yaml" (
   echo Flutter project was not found:
-  echo   %PROJECT_DIR%
+  echo   %SOURCE_DIR%
   pause
   exit /b 1
 )
 
-cd /d "%PROJECT_DIR%"
-echo Starting Attack of Dragon on Windows...
+cd /d "%SOURCE_DIR%"
+if errorlevel 1 (
+  echo Failed to enter project directory:
+  echo   %SOURCE_DIR%
+  pause
+  exit /b 1
+)
+
+if exist "%WINDOWS_CACHE%" (
+  findstr /i /c:"%SOURCE_DIR_SLASH%windows" "%WINDOWS_CACHE%" >nul 2>nul
+  if errorlevel 1 (
+    echo Removing stale Windows build cache from a previous project path...
+    rmdir /s /q "%WINDOWS_BUILD_DIR%" >nul 2>nul
+    if exist "%WINDOWS_BUILD_DIR%" (
+      set "EXIT_CODE=1"
+      echo Failed to remove stale Windows build cache:
+      echo   %WINDOWS_BUILD_DIR%
+      goto cleanup
+    )
+  )
+)
 
 "%RTK%" flutter pub get
 if errorlevel 1 (
+  set "EXIT_CODE=1"
   echo flutter pub get failed.
-  pause
-  exit /b 1
+  goto cleanup
 )
 
-"%RTK%" flutter run -d windows --dart-define=LEADERBOARD_URL=%LEADERBOARD_URL% --dart-define=SCORE_SUBMIT_URL=%SCORE_SUBMIT_URL%
+"%RTK%" flutter build windows --release
 if errorlevel 1 (
-  echo flutter run -d windows failed.
-  pause
-  exit /b 1
+  set "EXIT_CODE=1"
+  echo flutter build windows failed.
+  goto cleanup
 )
 
-pause
+if not exist "%EXE_PATH%" (
+  set "EXIT_CODE=1"
+  echo Windows executable was not found:
+  echo   %EXE_PATH%
+  goto cleanup
+)
+
+if defined NO_LAUNCH (
+  echo Build completed. Skipping launch because NO_LAUNCH is set.
+  goto cleanup
+)
+
+echo Starting Attack of the Dragon on Windows...
+start "" /wait "%EXE_PATH%"
+if errorlevel 1 (
+  set "EXIT_CODE=1"
+  echo Windows app exited with an error.
+  goto cleanup
+)
+
+:cleanup
+if not "%EXIT_CODE%"=="0" (
+  pause
+  exit /b %EXIT_CODE%
+)
+
+if not defined NO_PAUSE pause
+exit /b 0
