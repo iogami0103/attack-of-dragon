@@ -11,7 +11,6 @@ set "NETWORK_SERIAL=%DEVICE_IP%:%ADB_PORT%"
 set "TARGET_SERIAL="
 set "APK_PATH=build\app\outputs\flutter-apk\app-release.apk"
 set "EXIT_CODE=0"
-set "LOCAL_CHANGES="
 
 if not exist "%RTK%" (
   echo rtk.exe was not found:
@@ -87,35 +86,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-for /f "delims=" %%A in ('"%RTK%" git status --porcelain --untracked-files=all') do (
-  set "LOCAL_CHANGES=1"
-)
-
-if defined LOCAL_CHANGES (
-  set "EXIT_CODE=1"
-  echo Local changes were found.
-  echo Commit, stash, or remove local changes before installing the GitHub version.
-  echo To install the local working tree, run:
-  echo   進撃のドラゴン Android ローカル起動.cmd
-  goto cleanup
-)
-
-echo Updating from GitHub...
-"%RTK%" git fetch --prune origin
-if errorlevel 1 (
-  set "EXIT_CODE=1"
-  echo git fetch failed.
-  goto cleanup
-)
-
-"%RTK%" git pull --ff-only
-if errorlevel 1 (
-  set "EXIT_CODE=1"
-  echo git pull failed. Resolve update conflicts, then run this file again.
-  goto cleanup
-)
-
-echo Installing Attack of the Dragon on %TARGET_SERIAL%...
+echo Installing local working tree on %TARGET_SERIAL%...
 "%RTK%" flutter pub get
 if errorlevel 1 (
   set "EXIT_CODE=1"
