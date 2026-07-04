@@ -520,6 +520,43 @@ void main() {
     }
   });
 
+  testWidgets('settings hides Apple account switch when logged in', (
+    WidgetTester tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      final audio = GameAudio();
+      addTearDown(audio.dispose);
+      tester.view
+        ..physicalSize = const Size(540, 960)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsScreen(
+            settings: AppSettings.defaults().copyWith(
+              accountProvider: AccountProvider.apple,
+            ),
+            audio: audio,
+            adRemoval: AdRemovalPurchaseService(),
+            onChanged: (_) {},
+            onBack: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Appleでログイン済み'), findsOneWidget);
+      expect(find.text('Appleアカウントを変更'), findsNothing);
+      expect(find.text('Appleでログイン'), findsNothing);
+      expect(find.text('ログアウト'), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   testWidgets('scoreboard exposes source and period selectors', (
     WidgetTester tester,
   ) async {

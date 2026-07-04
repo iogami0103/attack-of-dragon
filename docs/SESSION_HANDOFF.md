@@ -38,6 +38,18 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-04 Device: Windows / AI: Codex — 設定画面の Apple ボタンと SafeArea を調整
+
+- Branch: `main`
+- PR: 未作成
+- やったこと:
+  - 設定画面で Apple ログイン済みの場合に「Appleアカウントを変更」ボタンを表示しないように変更
+  - 設定画面の背景も `SafeArea` 内へ移し、通知/ステータス領域にゲーム背景が表示されないようにタイトル/ゲーム画面と揃えた
+  - Apple ログイン済み時に切り替えボタンが出ないことを widget test で追加確認
+  - `flutter analyze` と `flutter test` は通過
+- 次のセッションへの申し送り:
+  - iPhone 実機で設定画面の通知領域と Apple ログイン済み表示を目視確認するとよい
+
 ## 2026-07-04 Device: Windows / AI: Codex — Apple identity token 検証修正を Worker にデプロイ
 
 - Branch: `main` (origin/codex/fix-apple-token-verification を fast-forward 取り込み)
