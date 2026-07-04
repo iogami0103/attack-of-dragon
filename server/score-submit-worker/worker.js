@@ -642,12 +642,13 @@ async function verifyGoogleIdToken(idToken, env) {
 
 async function verifyAppleIdentityToken(idToken, env) {
   const token = parseJwt(idToken);
-  if (token.header.alg !== 'ES256') throw httpError(401, 'invalid_id_token');
+  // Appleのidentity tokenはRS256署名(ES256は開発者側client secret用)。
+  if (token.header.alg !== 'RS256') throw httpError(401, 'invalid_id_token');
 
   await verifyJwtSignature({
     token,
     jwksUrl: APPLE_JWKS_URL,
-    algorithm: { name: 'ECDSA', namedCurve: 'P-256' },
+    algorithm: { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
   });
 
   validateJwtClaims(token.payload, {
