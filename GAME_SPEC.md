@@ -489,5 +489,5 @@ v0.1では入れない:
 ## 16. リリース前タスク
 
 - Google Auth Platform の公開ステータスを「テスト中」から公開に変更する。
-- Android 配布用の Google OAuth クライアントを追加し、Google Play App Signing またはリリース keystore の SHA-1 を登録する。
-- Apple Developer で bundle ID `io.github.iogami0103.attackofthedragon` の `Sign in with Apple` capability を有効化し、iOS の provisioning profile を更新する。
+- Android 配布用の Google OAuth クライアントを追加し、Google Play App Signing またはリリース keystore の SHA-1 を登録する。(2026-07-04 完了: upload 鍵 SHA-1 を登録済み。Play App Signing 導入時は Play 署名鍵の SHA-1 を追加登録する)
+- Apple Developer で bundle ID `io.github.iogami0103.attackofthedragon` の `Sign in with Apple` capability を有効化し、iOS の provisioning profile を更新する。(2026-07-04 確認: 既存の Xcode 自動生成 App ID `XC io github iogami0103 attackofthedragon` に capability 有効化済み。provisioning profile は Mac 作業時に Xcode 自動管理で対応)

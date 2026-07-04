@@ -2,6 +2,20 @@
 
 ## 2026-07-04
 
+### `fb85b23d-948e-456a-b016-84f9145db2f5`
+
+- Reason: Revert `APPLE_CLIENT_IDS` to `io.github.iogami0103.attackofthedragon`. The bundle ID turned out to already exist in the same Apple team as an Xcode-generated App ID (with Sign In with Apple enabled), so the temporary rename to `com.tatsuya.attackofthedragon` (version `465be8e3`) was unnecessary and has been rolled back.
+- Worker: `attack-of-the-dragon-score-submit`
+- URL: `https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev`
+- Verification: `GET /?period=all` returned `200` with leaderboard JSON.
+
+### `465be8e3-ad15-45c5-b14b-27f3cd3fa819`
+
+- Reason: Update `APPLE_CLIENT_IDS` to `com.tatsuya.attackofthedragon` (superseded by `fb85b23d`; see above).
+- Worker: `attack-of-the-dragon-score-submit`
+- URL: `https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev`
+- Verification: `GET /?period=all` returned `200` with leaderboard JSON.
+
 ### `1990c5e2-8c23-491d-9984-7afadff8dfb0`
 
 - Reason: Update privacy policy for the non-consumable ad removal purchase.
