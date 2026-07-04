@@ -38,6 +38,19 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-04 Device: Windows / AI: Codex — Apple identity token 検証修正を Worker にデプロイ
+
+- Branch: `main` (origin/codex/fix-apple-token-verification を fast-forward 取り込み)
+- PR: 未作成
+- やったこと:
+  - `server/score-submit-worker/worker.js` の Sign in with Apple identity token 検証を RS256 / `RSASSA-PKCS1-v1_5` + SHA-256 に修正したブランチを取り込み
+  - Cloudflare Worker `attack-of-the-dragon-score-submit` を再デプロイ。Version ID: `b77edb2a-8e0e-4177-96f7-aa627bb93148`
+  - `GET /?period=all` が `200` でランキング JSON を返すこと、`GET /privacy` が `200` を返すことを確認
+  - 完了済みの一時引き継ぎ `docs/HANDOFF.md` は削除し、`server/score-submit-worker/DEPLOYMENT_LOG.md` に今回のデプロイを記録
+- 次のセッションへの申し送り:
+  - iPhone 実機のアプリ設定画面から Apple ログインを再試行し、「Appleでログインしました。」が出ることを確認する
+  - 実機確認後、必要なら RELEASE_CHECKLIST に Apple ログイン復旧確認を反映する
+
 ## 2026-07-04 Device: Windows / AI: Claude — Googleログイン修復と Apple 提出準備 (App ID/ASC/IAP)
 
 - Branch: `main` (ユーザー指示で直接コミット)

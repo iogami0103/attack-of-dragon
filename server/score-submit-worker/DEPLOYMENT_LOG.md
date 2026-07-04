@@ -2,6 +2,15 @@
 
 ## 2026-07-04
 
+### `b77edb2a-8e0e-4177-96f7-aa627bb93148`
+
+- Reason: Fix Sign in with Apple identity token verification. Apple identity tokens are RS256-signed JWTs, so the Worker now verifies Apple tokens with `RSASSA-PKCS1-v1_5` + SHA-256 instead of the ES256/ECDSA path used for developer client secrets.
+- Worker: `attack-of-the-dragon-score-submit`
+- URL: `https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev`
+- Verification:
+  - `GET /?period=all` returned `200` with leaderboard JSON.
+  - `GET /privacy` returned `200` with `text/html; charset=utf-8`.
+
 ### `fb85b23d-948e-456a-b016-84f9145db2f5`
 
 - Reason: Revert `APPLE_CLIENT_IDS` to `io.github.iogami0103.attackofthedragon`. The bundle ID turned out to already exist in the same Apple team as an Xcode-generated App ID (with Sign In with Apple enabled), so the temporary rename to `com.tatsuya.attackofthedragon` (version `465be8e3`) was unnecessary and has been rolled back.
