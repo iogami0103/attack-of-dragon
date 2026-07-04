@@ -38,6 +38,21 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-05 Device: Windows / AI: Codex — 英語ローカライズ対応
+
+- Branch: `codex/english-localization`
+- PR: 未作成
+- やったこと:
+  - 既存の未コミット起動スクリプト差分を `main` に直接コミットした後、`codex/english-localization` ブランチで作業を開始。
+  - `DragonApp` の日本語固定 locale を解除し、端末 locale に応じて英語/日本語を切り替える `DragonStrings` を追加。
+  - タイトル、設定、広告削除、ログイン/ログアウト、スコアボード、ポーズ/リザルト、撃破数表示、ランキング取得メッセージを英語対応。
+  - widget test に英語タイトル表示確認を追加し、既存の日本語期待値は `Locale('ja')` 明示に更新。
+  - ユーザー確認済みの iPhone 実機 Apple ログイン復旧を `RELEASE_CHECKLIST.md` に反映。
+  - `flutter analyze` と `flutter test` は通過。
+- 次のセッションへの申し送り:
+  - まだ PR は未作成。必要なら `tools\github_workflow_check.ps1 -RunFlutterChecks` を実行してから push / PR 作成する。
+  - 英語 locale では端末設定が英語のときに UI が英語になる想定。ストア用の英語メタデータはまだ未作成。
+
 ## 2026-07-04 Device: Windows / AI: Codex — 起動コマンドのローカル差分停止を回避
 
 - Branch: `main`

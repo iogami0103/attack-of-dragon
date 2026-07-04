@@ -3,11 +3,28 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:attack_of_the_dragon/audio_cache.dart';
 import 'package:attack_of_the_dragon/main.dart';
+
+Widget localizedTestApp({
+  required Widget home,
+  Locale locale = const Locale('ja'),
+}) {
+  return MaterialApp(
+    locale: locale,
+    supportedLocales: DragonStrings.supportedLocales,
+    localizationsDelegates: const [
+      GlobalMaterialLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+    ],
+    home: home,
+  );
+}
 
 void main() {
   testWidgets('loads referenced audio assets', (tester) async {
@@ -269,12 +286,30 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const DragonApp());
+    await tester.pumpWidget(const DragonApp(locale: Locale('ja')));
     await tester.pumpAndSettle();
 
     expect(find.text('スタート'), findsOneWidget);
     expect(find.text('設定'), findsOneWidget);
     expect(find.text('スコアボード'), findsOneWidget);
+  });
+
+  testWidgets('shows title menu actions in English', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view
+      ..physicalSize = const Size(540, 960)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const DragonApp(locale: Locale('en')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Start'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Scoreboard'), findsOneWidget);
   });
 
   testWidgets('pause button pauses and resumes gameplay', (
@@ -304,7 +339,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      MaterialApp(
+      localizedTestApp(
         home: GameScreen(
           settings: AppSettings.defaults(),
           bestScore: 0,
@@ -355,7 +390,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(const DragonApp());
+      await tester.pumpWidget(const DragonApp(locale: Locale('ja')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('設定'));
       await tester.pumpAndSettle();
@@ -402,7 +437,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(
-        MaterialApp(
+        localizedTestApp(
           home: SettingsScreen(
             settings: AppSettings.defaults(),
             audio: audio,
@@ -431,7 +466,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      MaterialApp(
+      localizedTestApp(
         home: SettingsScreen(
           settings: AppSettings.defaults(),
           audio: audio,
@@ -470,7 +505,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      MaterialApp(
+      localizedTestApp(
         home: SettingsScreen(
           settings: AppSettings.defaults().copyWith(adsRemoved: true),
           audio: audio,
@@ -498,7 +533,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(
-        MaterialApp(
+        localizedTestApp(
           home: SettingsScreen(
             settings: AppSettings.defaults().copyWith(
               accountProvider: AccountProvider.google,
@@ -534,7 +569,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(
-        MaterialApp(
+        localizedTestApp(
           home: SettingsScreen(
             settings: AppSettings.defaults().copyWith(
               accountProvider: AccountProvider.apple,
@@ -567,7 +602,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const DragonApp());
+    await tester.pumpWidget(const DragonApp(locale: Locale('ja')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('スコアボード'));
     await tester.pumpAndSettle();
@@ -613,7 +648,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
+      localizedTestApp(
         home: ScoreboardScreen(
           localScores: [localScore],
           onlineScores: const [],
@@ -649,7 +684,7 @@ void main() {
     var returnedToResult = false;
 
     await tester.pumpWidget(
-      MaterialApp(
+      localizedTestApp(
         home: ScoreboardScreen(
           localScores: const [],
           onlineScores: const [],

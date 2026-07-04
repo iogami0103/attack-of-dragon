@@ -40,7 +40,7 @@
 - [x] 本番 D1 database に migrations を適用する。
 - [x] Worker vars の `ALLOWED_ORIGIN` / `GOOGLE_CLIENT_IDS` / `APPLE_CLIENT_IDS` を本番設定にする。ランキングは Cloudflare Worker + D1 だけで完結させる。
 - [x] `C:\Users\iogam\bin\rtk.exe wrangler deploy` で本番 Worker を deploy する。
-- [x] 実機からランキング取得、run token 発行、スコア投稿、ログイン復元を確認する。(2026-07-04 Google ログイン・復元を実機確認)
+- [x] 実機からランキング取得、run token 発行、スコア投稿、ログイン復元を確認する。(2026-07-04 Google ログイン・復元を実機確認。2026-07-05 iPhone 実機で Apple ログイン復旧を確認)
 
 ## 公開情報と権利表記
 

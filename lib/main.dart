@@ -88,6 +88,179 @@ const _interstitialRetryPlayTime = Duration(minutes: 3);
 const _preloadedSfxFiles = <String>[_enemyBurstSfxFile];
 const _preloadedLoopSfxFiles = <String>[_dragonFireLoopSfxFile];
 
+class DragonStrings {
+  const DragonStrings._(this.languageCode);
+
+  final String languageCode;
+
+  static const supportedLocales = [Locale('en'), Locale('ja')];
+
+  static Locale resolveLocale(
+    Locale? locale,
+    Iterable<Locale> supportedLocales,
+  ) {
+    if (locale?.languageCode == 'ja') return const Locale('ja');
+    return const Locale('en');
+  }
+
+  static DragonStrings of(BuildContext context) {
+    return forLocale(Localizations.localeOf(context));
+  }
+
+  static DragonStrings forLocale(Locale locale) {
+    return DragonStrings._(locale.languageCode == 'ja' ? 'ja' : 'en');
+  }
+
+  bool get isJapanese => languageCode == 'ja';
+
+  String get start => isJapanese ? 'スタート' : 'Start';
+  String get settings => isJapanese ? '設定' : 'Settings';
+  String get scoreboard => isJapanese ? 'スコアボード' : 'Scoreboard';
+  String get backToTitle => isJapanese ? 'タイトルへ戻る' : 'Back to Title';
+  String get backToResult => isJapanese ? 'リザルトへ戻る' : 'Back to Result';
+  String get playerName => isJapanese ? 'プレイヤー名' : 'Player Name';
+  String get volume => isJapanese ? '音量' : 'Volume';
+  String get logout => isJapanese ? 'ログアウト' : 'Log Out';
+  String get loggedOut => isJapanese ? 'ログアウトしました。' : 'Logged out.';
+  String signedInWith(String provider) =>
+      isJapanese ? '$providerでログイン済み' : 'Signed in with $provider';
+  String signInWith(String provider) =>
+      isJapanese ? '$providerでログイン' : 'Sign in with $provider';
+  String signedInMessage(String provider) =>
+      isJapanese ? '$providerでログインしました。' : 'Signed in with $provider.';
+
+  String get signInCanceled =>
+      isJapanese ? 'ログインをキャンセルしました。' : 'Sign-in was canceled.';
+  String get googleSignInFailed => isJapanese
+      ? 'Googleでログインできませんでした。Google OAuth の署名設定を確認してください。'
+      : 'Could not sign in with Google. Check the Google OAuth signing settings.';
+  String get missingGoogleIdToken => isJapanese
+      ? 'Googleの認証情報を取得できませんでした。Google OAuth の設定を確認してください。'
+      : 'Could not get Google credentials. Check the Google OAuth settings.';
+  String get missingAppleIdentityToken => isJapanese
+      ? 'Appleの認証情報を取得できませんでした。Apple DeveloperのSign in with Apple設定を確認してください。'
+      : 'Could not get Apple credentials. Check the Sign in with Apple settings in Apple Developer.';
+  String get appleSignInNotInteractive => isJapanese
+      ? 'Appleログイン画面を表示できませんでした。もう一度ボタンから操作してください。'
+      : 'Could not show the Apple sign-in sheet. Try again from the button.';
+  String get appleSignInFailed => isJapanese
+      ? 'Appleでログインできませんでした。Sign in with Apple capability とプロビジョニングプロファイルを確認してください。'
+      : 'Could not sign in with Apple. Check the Sign in with Apple capability and provisioning profile.';
+  String get appleSignInUnavailable => isJapanese
+      ? 'Appleログインを利用できません。iOS 13以上、Apple ID、Sign in with Apple capabilityを確認してください。'
+      : 'Apple sign-in is unavailable. Check iOS 13 or later, Apple ID, and Sign in with Apple capability.';
+  String get rankingServerNotConfigured => isJapanese
+      ? 'ランキングサーバー未設定のためログインできません。'
+      : 'Sign-in is unavailable because the ranking server is not configured.';
+  String providerRejected(String provider) => isJapanese
+      ? '$providerの認証情報をサーバーが拒否しました。bundle ID / OAuth client ID設定を確認してください。'
+      : '$provider credentials were rejected by the server. Check the bundle ID / OAuth client ID settings.';
+  String providerSignInFailed(String provider) => isJapanese
+      ? '$providerでログインできませんでした。'
+      : 'Could not sign in with $provider.';
+
+  String get adRemovalOwned => isJapanese ? '広告削除済み' : 'Ads removed';
+  String get adRemovalCheckingProduct =>
+      isJapanese ? '商品情報を確認中' : 'Checking product info';
+  String get adRemovalPurchaseProcessing =>
+      isJapanese ? '購入処理中' : 'Processing purchase';
+  String get adRemovalTitle => isJapanese ? '広告削除' : 'Remove Ads';
+  String adRemovalBuy(String price) =>
+      isJapanese ? '広告削除 $price' : 'Remove Ads $price';
+  String get adRemovalRestore => isJapanese ? '購入を復元' : 'Restore Purchase';
+  String _adRemovalMessage(_AdRemovalMessage message) {
+    return switch (message) {
+      _AdRemovalMessage.purchaseStateUnavailable =>
+        isJapanese ? '購入状態を確認できません' : 'Could not check purchase status',
+      _AdRemovalMessage.storeUnavailable =>
+        isJapanese ? 'ストアに接続できません' : 'Could not connect to the store',
+      _AdRemovalMessage.productUnavailable =>
+        isJapanese
+            ? '広告削除の商品情報を取得できません'
+            : 'Could not get Remove Ads product info',
+      _AdRemovalMessage.purchaseStartUnavailable =>
+        isJapanese ? '購入を開始できません' : 'Could not start purchase',
+      _AdRemovalMessage.noRestorablePurchases =>
+        isJapanese ? '復元できる購入はありません' : 'No purchases available to restore',
+      _AdRemovalMessage.restoreUnavailable =>
+        isJapanese ? '購入を復元できません' : 'Could not restore purchase',
+      _AdRemovalMessage.purchaseCompleteUnavailable =>
+        isJapanese ? '購入を完了できません' : 'Could not complete purchase',
+      _AdRemovalMessage.purchaseCanceled =>
+        isJapanese ? '購入をキャンセルしました' : 'Purchase canceled',
+      _AdRemovalMessage.purchaseStateSaveUnavailable =>
+        isJapanese ? '購入状態を保存できません' : 'Could not save purchase status',
+      _AdRemovalMessage.purchaseCompletionUnavailable =>
+        isJapanese ? '購入完了処理を確認できません' : 'Could not confirm purchase completion',
+    };
+  }
+
+  String get scoreboardOnline => isJapanese ? 'オンライン' : 'Online';
+  String get scoreboardLocal => isJapanese ? 'ローカル' : 'Local';
+  String get scoreboardBundled => isJapanese ? '同梱ランキング' : 'Bundled Rankings';
+  String get scoreboardToday => isJapanese ? '今日' : 'Today';
+  String get scoreboardWeek => isJapanese ? '週間' : 'Week';
+  String get scoreboardMonth => isJapanese ? '月間' : 'Month';
+  String get scoreboardAllTime => isJapanese ? '全期間' : 'All Time';
+  String get scoreboardSubmittedResultsShown => isJapanese
+      ? '投稿結果を即時反映しています。'
+      : 'Submitted results are shown immediately.';
+  String get noOnlineRankings => isJapanese ? 'ランキングがありません' : 'No rankings yet';
+  String get noLocalRecords =>
+      isJapanese ? 'ローカル記録がありません' : 'No local records yet';
+  String countEntries(int count) {
+    if (isJapanese) return '$count件';
+    return count == 1 ? '1 entry' : '$count entries';
+  }
+
+  String get bestScore => isJapanese ? '自己ベスト' : 'Best Score';
+  String get pause => isJapanese ? '一時停止' : 'Pause';
+  String get resume => isJapanese ? '再開' : 'Resume';
+  String get tapToStart => isJapanese ? 'タップしてスタート' : 'Tap to Start';
+  String get newRecord => isJapanese ? '新記録!' : 'New Record!';
+  String get best => isJapanese ? 'ベスト' : 'Best';
+  String get defeated => isJapanese ? '撃破' : 'Defeated';
+  String get retry => isJapanese ? 'リトライ' : 'Retry';
+  String killsCount(int kills) => isJapanese ? '撃破 $kills' : 'Defeated $kills';
+
+  String get scoreboardMissingApiMessage => isJapanese
+      ? 'SCORE_SUBMIT_URL 未設定のため、同梱ランキングを表示しています。'
+      : 'SCORE_SUBMIT_URL is not configured, so bundled rankings are shown.';
+  String get scoreboardCachedOnlineMessage => isJapanese
+      ? '最新取得に失敗したため、直近の投稿結果を表示しています。'
+      : 'Could not fetch latest rankings, so recent submitted results are shown.';
+  String get scoreboardLocalFallbackMessage => isJapanese
+      ? 'オンライン取得に失敗したため、ローカル記録を表示しています。'
+      : 'Could not fetch online rankings, so local records are shown.';
+
+  String scoreboardSourceLabel(ScoreboardSource source) {
+    return switch (source) {
+      ScoreboardSource.online => scoreboardOnline,
+      ScoreboardSource.local => scoreboardLocal,
+    };
+  }
+
+  String scoreboardPeriodLabel(ScoreboardPeriod period) {
+    return switch (period) {
+      ScoreboardPeriod.today => scoreboardToday,
+      ScoreboardPeriod.week => scoreboardWeek,
+      ScoreboardPeriod.month => scoreboardMonth,
+      ScoreboardPeriod.allTime => scoreboardAllTime,
+    };
+  }
+
+  String formatScoreDateTime(DateTime date) {
+    final local = date.toLocal();
+    String twoDigits(int value) => value.toString().padLeft(2, '0');
+    if (isJapanese) {
+      return '${local.year}/${twoDigits(local.month)}/${twoDigits(local.day)} '
+          '${twoDigits(local.hour)}:${twoDigits(local.minute)}';
+    }
+    return '${twoDigits(local.month)}/${twoDigits(local.day)}/${local.year} '
+        '${twoDigits(local.hour)}:${twoDigits(local.minute)}';
+  }
+}
+
 String get _scoreApiUrl {
   if (_scoreSubmitUrl.isNotEmpty) return _scoreSubmitUrl;
   if (kIsWeb) return '';
@@ -104,7 +277,9 @@ Future<void> main() async {
 }
 
 class DragonApp extends StatelessWidget {
-  const DragonApp({super.key});
+  const DragonApp({super.key, this.locale});
+
+  final Locale? locale;
 
   @override
   Widget build(BuildContext context) {
@@ -115,8 +290,9 @@ class DragonApp extends StatelessWidget {
     return MaterialApp(
       title: 'Attack of the Dragon',
       debugShowCheckedModeBanner: false,
-      locale: const Locale('ja', 'JP'),
-      supportedLocales: const [Locale('ja', 'JP')],
+      locale: locale,
+      supportedLocales: DragonStrings.supportedLocales,
+      localeResolutionCallback: DragonStrings.resolveLocale,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
@@ -587,6 +763,19 @@ class _AdMobBannerState extends State<AdMobBanner> {
   }
 }
 
+enum _AdRemovalMessage {
+  purchaseStateUnavailable,
+  storeUnavailable,
+  productUnavailable,
+  purchaseStartUnavailable,
+  noRestorablePurchases,
+  restoreUnavailable,
+  purchaseCompleteUnavailable,
+  purchaseCanceled,
+  purchaseStateSaveUnavailable,
+  purchaseCompletionUnavailable,
+}
+
 class AdRemovalPurchaseService extends ChangeNotifier {
   AdRemovalPurchaseService({InAppPurchase? store}) : _store = store;
 
@@ -597,7 +786,7 @@ class AdRemovalPurchaseService extends ChangeNotifier {
   bool _loading = false;
   bool _busy = false;
   bool _owned = false;
-  String? _message;
+  _AdRemovalMessage? _message;
 
   Future<void> Function()? onEntitlementUnlocked;
 
@@ -634,12 +823,13 @@ class AdRemovalPurchaseService extends ChangeNotifier {
 
   bool get canRestore => supported && !_owned && !_loading && !_busy;
 
-  String? get message {
-    if (_owned) return '広告削除済み';
+  String? message(DragonStrings strings) {
+    if (_owned) return strings.adRemovalOwned;
     if (!supported) return null;
-    if (_loading) return '商品情報を確認中';
-    if (_busy) return '購入処理中';
-    return _message;
+    if (_loading) return strings.adRemovalCheckingProduct;
+    if (_busy) return strings.adRemovalPurchaseProcessing;
+    final message = _message;
+    return message == null ? null : strings._adRemovalMessage(message);
   }
 
   Future<void> load({required bool owned}) async {
@@ -656,7 +846,7 @@ class AdRemovalPurchaseService extends ChangeNotifier {
       _handlePurchaseUpdates,
       onError: (_) {
         _busy = false;
-        _message = '購入状態を確認できません';
+        _message = _AdRemovalMessage.purchaseStateUnavailable;
         _notify();
       },
     );
@@ -669,7 +859,7 @@ class AdRemovalPurchaseService extends ChangeNotifier {
       _storeAvailable = await _inAppPurchase.isAvailable();
       if (!_storeAvailable) {
         _product = null;
-        _message = 'ストアに接続できません';
+        _message = _AdRemovalMessage.storeUnavailable;
         return;
       }
 
@@ -678,12 +868,12 @@ class AdRemovalPurchaseService extends ChangeNotifier {
       });
       _product = _productById(response.productDetails, _removeAdsProductId);
       if (_product == null) {
-        _message = '広告削除の商品情報を取得できません';
+        _message = _AdRemovalMessage.productUnavailable;
       }
     } catch (_) {
       _storeAvailable = false;
       _product = null;
-      _message = '広告削除の商品情報を取得できません';
+      _message = _AdRemovalMessage.productUnavailable;
     } finally {
       _loading = false;
       _notify();
@@ -694,7 +884,7 @@ class AdRemovalPurchaseService extends ChangeNotifier {
     if (_owned || _busy) return;
     final product = _product;
     if (!canBuy || product == null) {
-      _message = '広告削除の商品情報を取得できません';
+      _message = _AdRemovalMessage.productUnavailable;
       _notify();
       return;
     }
@@ -709,12 +899,12 @@ class AdRemovalPurchaseService extends ChangeNotifier {
       );
       if (!started) {
         _busy = false;
-        _message = '購入を開始できません';
+        _message = _AdRemovalMessage.purchaseStartUnavailable;
         _notify();
       }
     } catch (_) {
       _busy = false;
-      _message = '購入を開始できません';
+      _message = _AdRemovalMessage.purchaseStartUnavailable;
       _notify();
     }
   }
@@ -729,12 +919,12 @@ class AdRemovalPurchaseService extends ChangeNotifier {
       await _inAppPurchase.restorePurchases();
       if (_busy) {
         _busy = false;
-        _message = _owned ? '広告削除済み' : '復元できる購入はありません';
+        _message = _owned ? null : _AdRemovalMessage.noRestorablePurchases;
         _notify();
       }
     } catch (_) {
       _busy = false;
-      _message = '購入を復元できません';
+      _message = _AdRemovalMessage.restoreUnavailable;
       _notify();
     }
   }
@@ -743,7 +933,7 @@ class AdRemovalPurchaseService extends ChangeNotifier {
     if (purchases.isEmpty) {
       if (_busy) {
         _busy = false;
-        _message = '復元できる購入はありません';
+        _message = _AdRemovalMessage.noRestorablePurchases;
         _notify();
       }
       return;
@@ -761,21 +951,21 @@ class AdRemovalPurchaseService extends ChangeNotifier {
       switch (purchase.status) {
         case PurchaseStatus.pending:
           _busy = true;
-          _message = '購入処理中';
+          _message = null;
           break;
         case PurchaseStatus.purchased:
         case PurchaseStatus.restored:
           await _unlockEntitlement();
           _busy = false;
-          _message = '広告削除済み';
+          _message = null;
           break;
         case PurchaseStatus.error:
           _busy = false;
-          _message = '購入を完了できません';
+          _message = _AdRemovalMessage.purchaseCompleteUnavailable;
           break;
         case PurchaseStatus.canceled:
           _busy = false;
-          _message = '購入をキャンセルしました';
+          _message = _AdRemovalMessage.purchaseCanceled;
           break;
       }
     } catch (_) {
@@ -784,13 +974,13 @@ class AdRemovalPurchaseService extends ChangeNotifier {
         shouldCompletePurchase = false;
       }
       _busy = false;
-      _message = '購入状態を保存できません';
+      _message = _AdRemovalMessage.purchaseStateSaveUnavailable;
     } finally {
       if (shouldCompletePurchase) {
         try {
           await _inAppPurchase.completePurchase(purchase);
         } catch (_) {
-          _message = '購入完了処理を確認できません';
+          _message = _AdRemovalMessage.purchaseCompletionUnavailable;
         }
       }
       _notify();
@@ -1440,6 +1630,7 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final strings = DragonStrings.of(context);
     final screen = switch (_screen) {
       ShellScreen.title => TitleScreen(
         audio: _audio,
@@ -1453,7 +1644,7 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
           _buildGameScreen(),
           if (_scoreboardOverGame)
             _buildScoreboardScreen(
-              backLabel: 'リザルトへ戻る',
+              backLabel: strings.backToResult,
               onBack: _hideResultScoreboard,
             ),
         ],
@@ -1492,13 +1683,14 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
 
   Widget _buildScoreboardScreen({
     required VoidCallback onBack,
-    String backLabel = 'タイトルへ戻る',
+    String? backLabel,
   }) {
+    final strings = DragonStrings.of(context);
     return ScoreboardScreen(
       localScores: _localScores,
       onlineScores: _onlineScores,
       audio: _audio,
-      backLabel: backLabel,
+      backLabel: backLabel ?? strings.backToTitle,
       onBack: onBack,
     );
   }
@@ -1520,6 +1712,7 @@ class TitleScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = DragonStrings.of(context);
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -1550,7 +1743,7 @@ class TitleScreen extends StatelessWidget {
                         children: [
                           _MenuButton(
                             icon: Icons.play_arrow_rounded,
-                            label: 'スタート',
+                            label: strings.start,
                             onPressed: () {
                               onStart();
                             },
@@ -1558,7 +1751,7 @@ class TitleScreen extends StatelessWidget {
                           const SizedBox(height: 14),
                           _MenuButton(
                             icon: Icons.tune_rounded,
-                            label: '設定',
+                            label: strings.settings,
                             onPressed: () {
                               onSettings();
                             },
@@ -1566,7 +1759,7 @@ class TitleScreen extends StatelessWidget {
                           const SizedBox(height: 14),
                           _MenuButton(
                             icon: Icons.leaderboard_rounded,
-                            label: 'スコアボード',
+                            label: strings.scoreboard,
                             onPressed: () {
                               onScoreboard();
                             },
@@ -1704,6 +1897,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _authenticateProvider(AccountProvider provider) async {
+    final strings = DragonStrings.of(context);
     final settings = _settingsForSave(_draft);
     _commit(settings);
     setState(() => _authenticatingProvider = provider);
@@ -1728,55 +1922,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
           offset: nextSettings.playerName.length,
         );
       _commit(nextSettings);
-      _showAccountMessage('${provider.label}でログインしました。');
+      _showAccountMessage(strings.signedInMessage(provider.label));
     } catch (error, stackTrace) {
       _logAccountAuthError(provider, error, stackTrace);
-      _showAccountMessage(_accountAuthErrorMessage(provider, error));
+      _showAccountMessage(_accountAuthErrorMessage(strings, provider, error));
     } finally {
       if (mounted) setState(() => _authenticatingProvider = null);
     }
   }
 
   static String _accountAuthErrorMessage(
+    DragonStrings strings,
     AccountProvider provider,
     Object error,
   ) {
     if (_isSignInCancellation(error)) {
-      return 'ログインをキャンセルしました。';
+      return strings.signInCanceled;
     }
     if (error is GoogleSignInException) {
-      return 'Googleでログインできませんでした。Google OAuth の署名設定を確認してください。';
+      return strings.googleSignInFailed;
     }
     if (error is SignInWithAppleAuthorizationException) {
       return switch (error.code) {
         AuthorizationErrorCode.invalidResponse =>
-          'Appleの認証情報を取得できませんでした。Apple DeveloperのSign in with Apple設定を確認してください。',
+          strings.missingAppleIdentityToken,
         AuthorizationErrorCode.notInteractive =>
-          'Appleログイン画面を表示できませんでした。もう一度ボタンから操作してください。',
-        _ =>
-          'Appleでログインできませんでした。Sign in with Apple capability とプロビジョニングプロファイルを確認してください。',
+          strings.appleSignInNotInteractive,
+        _ => strings.appleSignInFailed,
       };
     }
     final stateError = _stateErrorMessage(error);
     if (stateError == 'missing_google_id_token') {
-      return 'Googleの認証情報を取得できませんでした。Google OAuth の設定を確認してください。';
+      return strings.missingGoogleIdToken;
     }
     if (stateError == 'missing_apple_identity_token') {
-      return 'Appleの認証情報を取得できませんでした。Apple DeveloperのSign in with Apple設定を確認してください。';
+      return strings.missingAppleIdentityToken;
     }
     if (stateError == 'apple_sign_in_unavailable' ||
         '$error'.contains('apple_sign_in_unavailable')) {
-      return 'Appleログインを利用できません。iOS 13以上、Apple ID、Sign in with Apple capabilityを確認してください。';
+      return strings.appleSignInUnavailable;
     }
     if (stateError == 'score_submit_url_not_configured') {
-      return 'ランキングサーバー未設定のためログインできません。';
+      return strings.rankingServerNotConfigured;
     }
     if (stateError == 'invalid_token_audience' ||
         stateError == 'invalid_token_issuer' ||
         stateError == 'invalid_id_token') {
-      return '${provider.label}の認証情報をサーバーが拒否しました。bundle ID / OAuth client ID設定を確認してください。';
+      return strings.providerRejected(provider.label);
     }
-    return '${provider.label}でログインできませんでした。';
+    return strings.providerSignInFailed(provider.label);
   }
 
   static String? _stateErrorMessage(Object error) {
@@ -1820,7 +2014,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         clearAccountProvider: true,
       ),
     );
-    _showAccountMessage('ログアウトしました。');
+    _showAccountMessage(DragonStrings.of(context).loggedOut);
     setState(() => _authenticatingProvider = null);
   }
 
@@ -1833,6 +2027,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = DragonStrings.of(context);
     final accountProvider = _accountProviderForPlatform;
     final loggedIn = accountProvider != null && _loggedInWith(accountProvider);
 
@@ -1858,16 +2053,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const _PanelHeader(
+                              _PanelHeader(
                                 icon: Icons.tune_rounded,
-                                title: '設定',
+                                title: strings.settings,
                               ),
                               const SizedBox(height: 20),
                               TextField(
                                 controller: _nameController,
                                 maxLength: AppSettings.maxPlayerNameLength,
                                 decoration: InputDecoration(
-                                  labelText: 'プレイヤー名',
+                                  labelText: strings.playerName,
                                   counterText: '',
                                   hintText: _emptyNameFallback,
                                   hintStyle: const TextStyle(
@@ -1895,10 +2090,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     color: _UiColors.ember,
                                   ),
                                   const SizedBox(width: 6),
-                                  const Expanded(
+                                  Expanded(
                                     child: Text(
-                                      '音量',
-                                      style: TextStyle(
+                                      strings.volume,
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.w800,
                                         color: _UiColors.ink,
                                       ),
@@ -1924,7 +2119,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 if (loggedIn) ...[
                                   _FantasyButton(
                                     icon: Icons.verified_user_rounded,
-                                    label: '${accountProvider.label}でログイン済み',
+                                    label: strings.signedInWith(
+                                      accountProvider.label,
+                                    ),
                                     tone: _FantasyButtonTone.quiet,
                                     height: 50,
                                     onPressed: null,
@@ -1932,7 +2129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   const SizedBox(height: 10),
                                   _FantasyButton(
                                     icon: Icons.logout_rounded,
-                                    label: 'ログアウト',
+                                    label: strings.logout,
                                     tone: _FantasyButtonTone.quiet,
                                     height: 46,
                                     onPressed: _accountBusy
@@ -1942,7 +2139,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ] else
                                   _FantasyButton(
                                     icon: _accountProviderIcon(accountProvider),
-                                    label: '${accountProvider.label}でログイン',
+                                    label: strings.signInWith(
+                                      accountProvider.label,
+                                    ),
                                     tone: _FantasyButtonTone.quiet,
                                     height: 50,
                                     busy:
@@ -1968,7 +2167,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               const SizedBox(height: 14),
                               _FantasyButton(
                                 icon: Icons.arrow_back_rounded,
-                                label: 'タイトルへ戻る',
+                                label: strings.backToTitle,
                                 tone: _FantasyButtonTone.secondary,
                                 onPressed: _backToTitle,
                               ),
@@ -2000,11 +2199,14 @@ class _AdRemovalSection extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final strings = DragonStrings.of(context);
     return AnimatedBuilder(
       animation: adRemoval,
       builder: (context, _) {
         final owned = adsRemoved || adRemoval.owned;
-        final message = owned ? '広告削除済み' : adRemoval.message;
+        final message = owned
+            ? strings.adRemovalOwned
+            : adRemoval.message(strings);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -2017,10 +2219,10 @@ class _AdRemovalSection extends StatelessWidget {
                   color: _UiColors.ember,
                 ),
                 const SizedBox(width: 6),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    '広告削除',
-                    style: TextStyle(
+                    strings.adRemovalTitle,
+                    style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       color: _UiColors.ink,
                     ),
@@ -2049,7 +2251,9 @@ class _AdRemovalSection extends StatelessWidget {
             const SizedBox(height: 10),
             _FantasyButton(
               icon: owned ? Icons.check_circle_rounded : Icons.block_rounded,
-              label: owned ? '広告削除済み' : '広告削除 ${adRemoval.priceLabel}',
+              label: owned
+                  ? strings.adRemovalOwned
+                  : strings.adRemovalBuy(adRemoval.priceLabel),
               tone: _FantasyButtonTone.quiet,
               height: 46,
               busy: !owned && (adRemoval.loading || adRemoval.busy),
@@ -2059,7 +2263,7 @@ class _AdRemovalSection extends StatelessWidget {
               const SizedBox(height: 10),
               _FantasyButton(
                 icon: Icons.restore_rounded,
-                label: '購入を復元',
+                label: strings.adRemovalRestore,
                 tone: _FantasyButtonTone.quiet,
                 height: 46,
                 busy: adRemoval.busy,
@@ -2127,7 +2331,7 @@ class ScoreboardScreen extends StatefulWidget {
     required this.onlineScores,
     required this.audio,
     required this.onBack,
-    this.backLabel = 'タイトルへ戻る',
+    this.backLabel,
     super.key,
   });
 
@@ -2135,31 +2339,26 @@ class ScoreboardScreen extends StatefulWidget {
   final List<ScoreEntry>? onlineScores;
   final GameAudio audio;
   final VoidCallback onBack;
-  final String backLabel;
+  final String? backLabel;
 
   @override
   State<ScoreboardScreen> createState() => _ScoreboardScreenState();
 }
 
 enum ScoreboardSource {
-  online('オンライン', Icons.public_rounded),
-  local('ローカル', Icons.phone_android_rounded);
+  online(Icons.public_rounded),
+  local(Icons.phone_android_rounded);
 
-  const ScoreboardSource(this.label, this.icon);
+  const ScoreboardSource(this.icon);
 
-  final String label;
   final IconData icon;
 }
 
 enum ScoreboardPeriod {
-  today('今日'),
-  week('週間'),
-  month('月間'),
-  allTime('全期間');
-
-  const ScoreboardPeriod(this.label);
-
-  final String label;
+  today,
+  week,
+  month,
+  allTime;
 
   String get queryValue {
     return switch (this) {
@@ -2173,6 +2372,8 @@ enum ScoreboardPeriod {
 
 class _ScoreboardScreenState extends State<ScoreboardScreen> {
   late Future<ScoreboardData> _scores;
+  late DragonStrings _strings;
+  bool _scoresInitialized = false;
   ScoreboardSource _source = ScoreboardSource.online;
   ScoreboardPeriod _period = ScoreboardPeriod.allTime;
 
@@ -2182,13 +2383,20 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
   }
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final strings = DragonStrings.of(context);
+    if (_scoresInitialized && _strings.languageCode == strings.languageCode) {
+      return;
+    }
+    _strings = strings;
     _scores = ScoreStore.loadScoreboard(
       widget.localScores,
       period: _period,
       cachedOnlineScores: widget.onlineScores,
+      strings: strings,
     );
+    _scoresInitialized = true;
   }
 
   @override
@@ -2200,12 +2408,14 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
         widget.localScores,
         period: _period,
         cachedOnlineScores: widget.onlineScores,
+        strings: _strings,
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final strings = DragonStrings.of(context);
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
@@ -2220,8 +2430,8 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                     ? null
                     : ScoreboardData(
                         onlineScores: widget.onlineScores!,
-                        sourceLabel: 'オンライン',
-                        message: '投稿結果を即時反映しています。',
+                        sourceLabel: strings.scoreboardOnline,
+                        message: strings.scoreboardSubmittedResultsShown,
                       ),
                 builder: (context, snapshot) {
                   final data = snapshot.data;
@@ -2250,7 +2460,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                             children: [
                               _PanelHeader(
                                 icon: Icons.leaderboard_rounded,
-                                title: 'スコアボード',
+                                title: strings.scoreboard,
                                 color: _UiColors.teal,
                                 trailing: isLoading
                                     ? const SizedBox.square(
@@ -2267,6 +2477,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                               _ScoreboardControls(
                                 source: _source,
                                 period: _period,
+                                strings: strings,
                                 onSourceChanged: (value) {
                                   setState(() {
                                     _source = value;
@@ -2275,6 +2486,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                                         widget.localScores,
                                         period: _period,
                                         cachedOnlineScores: widget.onlineScores,
+                                        strings: strings,
                                       );
                                     }
                                   });
@@ -2287,6 +2499,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                                         widget.localScores,
                                         period: value,
                                         cachedOnlineScores: widget.onlineScores,
+                                        strings: strings,
                                       );
                                     }
                                   });
@@ -2296,10 +2509,13 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                               _ScoreboardListHeader(
                                 sourceLabel: _source == ScoreboardSource.online
                                     ? data?.sourceLabel ??
-                                          ScoreboardSource.online.label
-                                    : ScoreboardSource.local.label,
-                                periodLabel: _period.label,
+                                          strings.scoreboardOnline
+                                    : strings.scoreboardLocal,
+                                periodLabel: strings.scoreboardPeriodLabel(
+                                  _period,
+                                ),
                                 count: itemCount,
+                                strings: strings,
                               ),
                               const SizedBox(height: 6),
                               Expanded(
@@ -2313,8 +2529,8 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                                     ? Center(
                                         child: Text(
                                           _source == ScoreboardSource.online
-                                              ? 'ランキングがありません'
-                                              : 'ローカル記録がありません',
+                                              ? strings.noOnlineRankings
+                                              : strings.noLocalRecords,
                                         ),
                                       )
                                     : ListView.builder(
@@ -2327,9 +2543,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                                                 _source ==
                                                     ScoreboardSource.local ||
                                                 data?.sourceLabel ==
-                                                    ScoreboardSource
-                                                        .local
-                                                        .label,
+                                                    strings.scoreboardLocal,
                                           );
                                         },
                                       ),
@@ -2351,7 +2565,7 @@ class _ScoreboardScreenState extends State<ScoreboardScreen> {
                       const SizedBox(height: 12),
                       _FantasyButton(
                         icon: Icons.arrow_back_rounded,
-                        label: widget.backLabel,
+                        label: widget.backLabel ?? strings.backToTitle,
                         tone: _FantasyButtonTone.secondary,
                         onPressed: () {
                           widget.onBack();
@@ -2373,12 +2587,14 @@ class _ScoreboardControls extends StatelessWidget {
   const _ScoreboardControls({
     required this.source,
     required this.period,
+    required this.strings,
     required this.onSourceChanged,
     required this.onPeriodChanged,
   });
 
   final ScoreboardSource source;
   final ScoreboardPeriod period;
+  final DragonStrings strings;
   final ValueChanged<ScoreboardSource> onSourceChanged;
   final ValueChanged<ScoreboardPeriod> onPeriodChanged;
 
@@ -2418,7 +2634,10 @@ class _ScoreboardControls extends StatelessWidget {
                     (value) => ButtonSegment<ScoreboardSource>(
                       value: value,
                       icon: Icon(value.icon),
-                      label: Text(value.label, style: textStyle),
+                      label: Text(
+                        strings.scoreboardSourceLabel(value),
+                        style: textStyle,
+                      ),
                     ),
                   )
                   .toList(),
@@ -2435,7 +2654,10 @@ class _ScoreboardControls extends StatelessWidget {
                     .map(
                       (value) => ButtonSegment<ScoreboardPeriod>(
                         value: value,
-                        label: Text(value.label, style: textStyle),
+                        label: Text(
+                          strings.scoreboardPeriodLabel(value),
+                          style: textStyle,
+                        ),
                       ),
                     )
                     .toList(),
@@ -2500,11 +2722,13 @@ class _ScoreboardListHeader extends StatelessWidget {
     required this.sourceLabel,
     required this.periodLabel,
     required this.count,
+    required this.strings,
   });
 
   final String sourceLabel;
   final String periodLabel;
   final int count;
+  final DragonStrings strings;
 
   @override
   Widget build(BuildContext context) {
@@ -2523,7 +2747,7 @@ class _ScoreboardListHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Text('$count件', style: style),
+        Text(strings.countEntries(count), style: style),
       ],
     );
   }
@@ -2536,6 +2760,7 @@ class _BestScoreBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = DragonStrings.of(context);
     final scoreText = score == 0 ? '--' : '$score m';
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -2566,7 +2791,7 @@ class _BestScoreBlock extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '自己ベスト',
+                    strings.bestScore,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                       color: const Color(0xff8a5a23),
@@ -2617,6 +2842,7 @@ class _ScoreRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = DragonStrings.of(context);
     final topRank = rank <= 3;
     final accent = _accentColor;
     final nameStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -2628,7 +2854,7 @@ class _ScoreRow extends StatelessWidget {
       color: topRank ? accent : const Color(0xff1f1d1a),
     );
     final primaryText = showDateTime
-        ? _formatScoreDateTime(score.date)
+        ? strings.formatScoreDateTime(score.date)
         : score.name;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -2721,7 +2947,7 @@ class _ScoreRow extends StatelessWidget {
                       preserveFullText: showDateTime,
                     ),
                     Text(
-                      '撃破 ${score.kills}',
+                      strings.killsCount(score.kills),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(
@@ -2781,13 +3007,6 @@ class _ScorePrimaryText extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatScoreDateTime(DateTime date) {
-  final local = date.toLocal();
-  String twoDigits(int value) => value.toString().padLeft(2, '0');
-  return '${local.year}/${twoDigits(local.month)}/${twoDigits(local.day)} '
-      '${twoDigits(local.hour)}:${twoDigits(local.minute)}';
 }
 
 class GameScreen extends StatefulWidget {
@@ -3454,6 +3673,7 @@ class _GameScreenState extends State<GameScreen>
 
   @override
   Widget build(BuildContext context) {
+    final strings = DragonStrings.of(context);
     return FutureBuilder<GameImages>(
       future: _images,
       builder: (context, snapshot) {
@@ -3491,6 +3711,7 @@ class _GameScreenState extends State<GameScreen>
                             backgroundOffset: _backgroundOffset,
                             score: _score,
                             kills: _kills,
+                            killChipText: strings.killsCount(_kills),
                             dragonRect: _dragonRect,
                             dragonFrameSize: _dragonFrameSize,
                             enemyCellSize: _enemyCellSize,
@@ -3541,6 +3762,7 @@ class _PauseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = DragonStrings.of(context);
     return SafeArea(
       child: Align(
         alignment: Alignment.topLeft,
@@ -3571,7 +3793,7 @@ class _PauseButton extends StatelessWidget {
             ),
             child: IconButton(
               onPressed: onPressed,
-              tooltip: paused ? '再開' : '一時停止',
+              tooltip: paused ? strings.resume : strings.pause,
               color: Colors.white,
               icon: Icon(
                 paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
@@ -3612,6 +3834,7 @@ class _ReadyPromptState extends State<_ReadyPrompt>
 
   @override
   Widget build(BuildContext context) {
+    final strings = DragonStrings.of(context);
     final pulse = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
     return Align(
       alignment: const Alignment(0, 0.42),
@@ -3645,16 +3868,20 @@ class _ReadyPromptState extends State<_ReadyPrompt>
               ),
             ],
           ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.touch_app_rounded, color: _UiColors.gold, size: 22),
-                SizedBox(width: 10),
+                const Icon(
+                  Icons.touch_app_rounded,
+                  color: _UiColors.gold,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
                 Text(
-                  'タップしてスタート',
-                  style: TextStyle(
+                  strings.tapToStart,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -3712,6 +3939,7 @@ class _PauseOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = DragonStrings.of(context);
     return _GameOverlayScrim(
       child: _GamePanel(
         maxWidth: 320,
@@ -3726,7 +3954,7 @@ class _PauseOverlay extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '一時停止',
+              strings.pause,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 color: _UiColors.ink,
@@ -3737,7 +3965,7 @@ class _PauseOverlay extends StatelessWidget {
             const SizedBox(height: 18),
             _FantasyButton(
               icon: Icons.play_arrow_rounded,
-              label: '再開',
+              label: strings.resume,
               onPressed: onResume,
             ),
           ],
@@ -3770,6 +3998,7 @@ class _ResultOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = DragonStrings.of(context);
     return _GameOverlayScrim(
       child: _GamePanel(
         maxWidth: 340,
@@ -3802,20 +4031,23 @@ class _ResultOverlay extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 5,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.auto_awesome_rounded,
                           size: 16,
                           color: Colors.white,
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
-                          '新記録!',
-                          style: TextStyle(
+                          strings.newRecord,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
                             fontSize: 14,
@@ -3855,7 +4087,7 @@ class _ResultOverlay extends StatelessWidget {
                 Expanded(
                   child: _ResultStatChip(
                     icon: Icons.workspace_premium_rounded,
-                    label: 'ベスト',
+                    label: strings.best,
                     value: '$bestScore m',
                   ),
                 ),
@@ -3863,7 +4095,7 @@ class _ResultOverlay extends StatelessWidget {
                 Expanded(
                   child: _ResultStatChip(
                     icon: Icons.local_fire_department_rounded,
-                    label: '撃破',
+                    label: strings.defeated,
                     value: '$kills',
                   ),
                 ),
@@ -3872,7 +4104,7 @@ class _ResultOverlay extends StatelessWidget {
             const SizedBox(height: 18),
             _FantasyButton(
               icon: Icons.replay_rounded,
-              label: 'リトライ',
+              label: strings.retry,
               onPressed: () {
                 onRetry();
               },
@@ -3880,7 +4112,7 @@ class _ResultOverlay extends StatelessWidget {
             const SizedBox(height: 10),
             _FantasyButton(
               icon: Icons.leaderboard_rounded,
-              label: 'スコアボード',
+              label: strings.scoreboard,
               tone: _FantasyButtonTone.secondary,
               height: 50,
               onPressed: () {
@@ -3890,7 +4122,7 @@ class _ResultOverlay extends StatelessWidget {
             const SizedBox(height: 10),
             _FantasyButton(
               icon: Icons.home_rounded,
-              label: 'タイトルへ戻る',
+              label: strings.backToTitle,
               tone: _FantasyButtonTone.secondary,
               height: 50,
               onPressed: () {
@@ -3973,6 +4205,7 @@ class DragonGamePainter extends CustomPainter {
     required this.backgroundOffset,
     required this.score,
     required this.kills,
+    required this.killChipText,
     required this.dragonRect,
     required this.dragonFrameSize,
     required this.enemyCellSize,
@@ -3988,6 +4221,7 @@ class DragonGamePainter extends CustomPainter {
   final double backgroundOffset;
   final double score;
   final int kills;
+  final String killChipText;
   final Rect dragonRect;
   final Size dragonFrameSize;
   final Size enemyCellSize;
@@ -4287,7 +4521,7 @@ class DragonGamePainter extends CustomPainter {
     final fontSize = math.max(14.0, size.width * 0.036);
     final text = TextPainter(
       text: TextSpan(
-        text: '撃破 $kills',
+        text: killChipText,
         style: TextStyle(
           fontFamily: 'MPLUSRounded1c',
           color: Colors.white,
@@ -4906,29 +5140,30 @@ class ScoreStore {
     List<ScoreEntry> local, {
     ScoreboardPeriod period = ScoreboardPeriod.allTime,
     List<ScoreEntry>? cachedOnlineScores,
+    required DragonStrings strings,
   }) async {
     final apiUrl = _scoreApiUrl;
     try {
       final online = await _loadOnline(period);
       return ScoreboardData(
         onlineScores: online.take(maxLeaderboardEntries).toList(),
-        sourceLabel: apiUrl.isEmpty ? '同梱ランキング' : 'オンライン',
-        message: apiUrl.isEmpty
-            ? 'SCORE_SUBMIT_URL 未設定のため、同梱ランキングを表示しています。'
-            : '',
+        sourceLabel: apiUrl.isEmpty
+            ? strings.scoreboardBundled
+            : strings.scoreboardOnline,
+        message: apiUrl.isEmpty ? strings.scoreboardMissingApiMessage : '',
       );
     } catch (_) {
       if (cachedOnlineScores != null) {
         return ScoreboardData(
           onlineScores: cachedOnlineScores.take(maxLeaderboardEntries).toList(),
-          sourceLabel: 'オンライン',
-          message: '最新取得に失敗したため、直近の投稿結果を表示しています。',
+          sourceLabel: strings.scoreboardOnline,
+          message: strings.scoreboardCachedOnlineMessage,
         );
       }
       return ScoreboardData(
         onlineScores: local.take(maxLeaderboardEntries).toList(),
-        sourceLabel: 'ローカル',
-        message: 'オンライン取得に失敗したため、ローカル記録を表示しています。',
+        sourceLabel: strings.scoreboardLocal,
+        message: strings.scoreboardLocalFallbackMessage,
       );
     }
   }
