@@ -56,7 +56,7 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
   - Xcode Organizer から App Store Connect へ upload 完了。Organizer status は `Uploaded to Apple` / build number `1` / 2026-07-05 11:46。`objective_c.framework` dSYM upload warning は残ったが、アプリ本体の upload は完了。
 - 次のセッションへの申し送り:
   - PR #3 は draft のまま。内容確認後、ready にして main へ取り込む。
-  - App Store Connect で build processing 完了後、TestFlight 内部テストに追加して確認する。
+  - TestFlight 内部テストは今回不要。App Store Connect の build processing 完了後は、ストア提出に必要なメタデータ、スクリーンショット、年齢レーティング、App Privacy、契約/税務/銀行情報の確認へ進む。
   - iOS release build / IPA export は `Documents` 直下ではなく `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` のような cache copy で行う。
 
 ## 2026-07-05 Device: Windows / AI: Codex — iOS広告提出設定とCI整合性対応

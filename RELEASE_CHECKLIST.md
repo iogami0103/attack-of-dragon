@@ -38,7 +38,7 @@
 - [ ] AdMob の iOS アプリ設定が本番 bundle ID と一致していることを確認する。
 - [x] iOS LaunchImage をアプリ固有のタイトルロゴに差し替え、`flutter build ipa --release` の default placeholder warning が出ないことを確認する。(2026-07-05 Mac)
 - [x] Mac/Xcode 環境で archive / App Store Connect upload を確認する。(2026-07-05 Mac: `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` のクリーンコピーで `flutter build ipa --release` が成功。IPA: `build/ios/ipa/Attack of the Dragon.ipa` / SHA-256 `35ffac006699fdbf09255714baa352cebe5523acfd783083db75c48bc6c65876`。IPA 内 `Info.plist` で SKAdNetworkItems 50件、`UIRequiresFullScreen=true`、本番 AdMob App ID、`ITSAppUsesNonExemptEncryption=false` を確認。Xcode Organizer で App Store Connect upload 完了、Status `Uploaded to Apple`。`objective_c.framework` dSYM upload warning あり。`Documents` 配下の build 出力では `Flutter.framework` ディレクトリに `com.apple.FinderInfo` / `com.apple.fileprovider.fpfs#P` が付き codesign 失敗するため、iOS release build は cache copy で行う)
-- [ ] App Store Connect で build processing 完了後、TestFlight 内部テストに追加して確認する。
+- [x] TestFlight 内部テストは今回実施しない。(2026-07-05 ユーザー指示。App Store Connect upload は完了済み)
 
 ## Cloudflare Worker / D1
 
