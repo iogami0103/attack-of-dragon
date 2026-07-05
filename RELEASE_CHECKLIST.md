@@ -36,7 +36,7 @@
 - [ ] provisioning profile を更新する。
 - [ ] AdMob の iOS アプリ設定が本番 bundle ID と一致していることを確認する。
 - [x] iOS LaunchImage をアプリ固有のタイトルロゴに差し替え、`flutter build ipa --release` の default placeholder warning が出ないことを確認する。(2026-07-05 Mac)
-- [ ] Mac/Xcode 環境で archive / TestFlight 提出を確認する。(2026-07-05 MacブランチでLaunchImage差し替え後のIPA build成功記録あり。ただしSKAdNetwork追加後の現在コミットから再実行する)
+- [ ] Mac/Xcode 環境で archive / TestFlight 提出を確認する。(2026-07-05 Mac: `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` のクリーンコピーで `flutter build ipa --release` が成功。IPA: `build/ios/ipa/Attack of the Dragon.ipa` / SHA-256 `92562eceaae11e55dc9d14e7411c2dd35ecb18ea42d76bf880798f81eedb4a1b`。IPA 内 `Info.plist` で SKAdNetworkItems 50件、本番 AdMob App ID、`ITSAppUsesNonExemptEncryption=false` を確認。TestFlight upload は Transporter または App Store Connect API key が必要なため未実施。`Documents` 配下の build 出力では `Flutter.framework` ディレクトリに `com.apple.FinderInfo` / `com.apple.fileprovider.fpfs#P` が付き codesign 失敗するため、iOS release build は cache copy で行う)
 
 ## Cloudflare Worker / D1
 

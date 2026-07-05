@@ -51,6 +51,7 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
   - `Documents` 配下の worktree での iOS build は `Flutter.framework` ディレクトリの `com.apple.FinderInfo` / `com.apple.fileprovider.fpfs#P` 拡張属性が codesign に拒否されることを確認。
   - iOS LaunchImage の 1x1 transparent placeholder を `assets/images/title_logo.png` 由来の 300x133pt 1x/2x/3x 画像に差し替え、`flutter build ipa --release` の Launch image placeholder warning が出ないことを確認。
   - `origin/main` の `9f1597d` まで取り込み、main 側で追加された iOS 広告提出設定、LaunchImage、CI workflow、Windows workflow check 修正を残した。
+  - `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` にクリーンコピーして `flutter build ipa --release` を実行し、archive と App Store IPA export に成功。IPA は `build/ios/ipa/Attack of the Dragon.ipa`、SHA-256 は `92562eceaae11e55dc9d14e7411c2dd35ecb18ea42d76bf880798f81eedb4a1b`。IPA 内 `Info.plist` で SKAdNetworkItems 50件、本番 AdMob App ID、non-exempt encryption false を確認。
 - 次のセッションへの申し送り:
   - PR #3 は draft のまま。内容確認後、ready にして main へ取り込む。
   - TestFlight upload は未実施。Transporter で IPA をアップロードするか、App Store Connect API key を用意して `xcrun altool --upload-app --type ios -f build/ios/ipa/*.ipa --apiKey ... --apiIssuer ...` を実行する。
