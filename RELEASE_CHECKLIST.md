@@ -12,7 +12,7 @@
 - [x] `C:\Users\iogam\bin\rtk.exe flutter build windows --release`
 - [x] `C:\Users\iogam\bin\rtk.exe node --check server/score-submit-worker/worker.js`
 - [x] `artifacts/release-2026-07-04` に AAB / Web zip / Windows zip / SHA-256 を作成する。
-- [ ] GitHub Actions の `Flutter CI` が通っていることを確認する。(2026-07-05 Mac: `codex/release-2026-07-05` で workflow を追加済み。push は GitHub token の `workflow` scope 追加後に再実行し、CI 通過を確認する)
+- [x] GitHub Actions の `Flutter CI` が通っていることを確認する。(2026-07-05 Mac: `codex/release-2026-07-05` push run `28724601191` が成功)
 
 ## Android
 
