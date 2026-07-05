@@ -215,6 +215,24 @@ void main() {
     expect(manifest, contains('com.google.android.gms.permission.AD_ID'));
   });
 
+  test('ios release plist declares AdMob privacy settings', () {
+    final plist = File('ios/Runner/Info.plist').readAsStringSync();
+    final skAdNetworkIds = RegExp(
+      r'<string>([a-z0-9]+\.skadnetwork)</string>',
+    ).allMatches(plist).map((match) => match.group(1)!).toList();
+
+    expect(plist, contains('<key>GADApplicationIdentifier</key>'));
+    expect(skAdNetworkIds, hasLength(50));
+    expect(skAdNetworkIds.toSet(), hasLength(skAdNetworkIds.length));
+    expect(skAdNetworkIds, contains('cstr6suwn9.skadnetwork'));
+    expect(
+      RegExp(
+        r'<key>ITSAppUsesNonExemptEncryption</key>\s*<false/>',
+      ).hasMatch(plist),
+      isTrue,
+    );
+  });
+
   test('filterByPeriod applies scoreboard date ranges', () {
     final now = DateTime(2026, 7, 2, 12);
     final scores = [
