@@ -41,7 +41,7 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 ## 2026-07-05 Device: Mac / AI: Codex — Flutter CI と Mac リリース確認
 
 - Branch: `codex/release-2026-07-05`
-- PR: 未作成
+- PR: #3 https://github.com/iogami0103/attack-of-dragon/pull/3
 - やったこと:
   - `origin/main` からクリーンな release worktree `/Users/user/Documents/Attack_of_the_Dragon_release_worktree` を作成し、元の作業ツリーの未コミット差分には触れずに作業。
   - `.github/workflows/flutter-ci.yml` を追加し、`Flutter CI` で `flutter pub get` / `flutter analyze` / `flutter test` / `flutter build web --release` / `flutter build apk --debug` / `node --check server/score-submit-worker/worker.js` を実行するようにした。
