@@ -33,10 +33,12 @@
 - [x] Apple Developer で `Sign in with Apple` capability を有効化する。(2026-07-04 確認: 既存 App ID `io.github.iogami0103.attackofthedragon` (XC 自動生成) に Sign In with Apple (primary) が有効化済みだった。チーム 95RP2F687Q)
 - [x] `Info.plist` に AdMob の `SKAdNetworkItems` を追加する。(2026-07-05: Google公式の2026-07-01更新リスト50件を反映)
 - [x] `Info.plist` に `ITSAppUsesNonExemptEncryption` = false を追加する。
+- [x] iPad multitasking の orientation 検証に通すため `Info.plist` に `UIRequiresFullScreen=true` を追加する。(2026-07-05 Mac: App Store Connect error 90474 対応)
 - [ ] provisioning profile を更新する。
 - [ ] AdMob の iOS アプリ設定が本番 bundle ID と一致していることを確認する。
 - [x] iOS LaunchImage をアプリ固有のタイトルロゴに差し替え、`flutter build ipa --release` の default placeholder warning が出ないことを確認する。(2026-07-05 Mac)
-- [ ] Mac/Xcode 環境で archive / TestFlight 提出を確認する。(2026-07-05 Mac: `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` のクリーンコピーで `flutter build ipa --release` が成功。IPA: `build/ios/ipa/Attack of the Dragon.ipa` / SHA-256 `92562eceaae11e55dc9d14e7411c2dd35ecb18ea42d76bf880798f81eedb4a1b`。IPA 内 `Info.plist` で SKAdNetworkItems 50件、本番 AdMob App ID、`ITSAppUsesNonExemptEncryption=false` を確認。TestFlight upload は Transporter または App Store Connect API key が必要なため未実施。`Documents` 配下の build 出力では `Flutter.framework` ディレクトリに `com.apple.FinderInfo` / `com.apple.fileprovider.fpfs#P` が付き codesign 失敗するため、iOS release build は cache copy で行う)
+- [x] Mac/Xcode 環境で archive / App Store Connect upload を確認する。(2026-07-05 Mac: `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` のクリーンコピーで `flutter build ipa --release` が成功。IPA: `build/ios/ipa/Attack of the Dragon.ipa` / SHA-256 `35ffac006699fdbf09255714baa352cebe5523acfd783083db75c48bc6c65876`。IPA 内 `Info.plist` で SKAdNetworkItems 50件、`UIRequiresFullScreen=true`、本番 AdMob App ID、`ITSAppUsesNonExemptEncryption=false` を確認。Xcode Organizer で App Store Connect upload 完了、Status `Uploaded to Apple`。`objective_c.framework` dSYM upload warning あり。`Documents` 配下の build 出力では `Flutter.framework` ディレクトリに `com.apple.FinderInfo` / `com.apple.fileprovider.fpfs#P` が付き codesign 失敗するため、iOS release build は cache copy で行う)
+- [ ] App Store Connect で build processing 完了後、TestFlight 内部テストに追加して確認する。
 
 ## Cloudflare Worker / D1
 

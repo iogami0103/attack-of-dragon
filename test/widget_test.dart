@@ -230,6 +230,10 @@ void main() {
       plist,
       matches(RegExp(r'<key>ITSAppUsesNonExemptEncryption</key>\s*<false/>')),
     );
+    expect(
+      plist,
+      matches(RegExp(r'<key>UIRequiresFullScreen</key>\s*<true/>')),
+    );
   });
 
   test('filterByPeriod applies scoreboard date ranges', () {

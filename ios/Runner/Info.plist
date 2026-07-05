@@ -233,6 +233,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>This identifier will be used to show and measure ads.</string>
 	<key>UIApplicationSceneManifest</key>
