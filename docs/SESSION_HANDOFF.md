@@ -47,11 +47,13 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
   - `.github/workflows/flutter-ci.yml` を追加し、`Flutter CI` で `flutter pub get` / `flutter analyze` / `flutter test` / `flutter build web --release` / `flutter build apk --debug` / `node --check server/score-submit-worker/worker.js` を実行するようにした。
   - `app_tracking_transparency` 追加後の `ios/Podfile.lock` を `pod install` で更新し、Linux CI の Android build 用に `android/gradlew` の実行権限を付与。
   - Mac ローカルで `flutter pub get`、`flutter analyze`、`flutter test`、`flutter build web --release`、`flutter build apk --debug`、`node --check server/score-submit-worker/worker.js`、`git diff --check` は通過。
-  - GitHub CLI token に `workflow` scope を追加し、`codex/release-2026-07-05` を push。GitHub Actions `Flutter CI` run `28724601191` は 7m42s で成功。
-  - `flutter build ios --release --no-codesign` は Xcode 26.6 で試行したが、Flutter SDK の `Flutter.framework/Flutter` に `com.apple.provenance` 拡張属性が残り、codesign の `resource fork, Finder information, or similar detritus not allowed` で失敗。
+  - GitHub CLI token に `workflow` scope を追加し、`codex/release-2026-07-05` を push。GitHub Actions `Flutter CI` は PR #3 pull_request run `28724958105` まで成功。
+  - `Documents` 配下の worktree での iOS build は `Flutter.framework` ディレクトリの `com.apple.FinderInfo` / `com.apple.fileprovider.fpfs#P` 拡張属性が codesign に拒否されることを確認。
+  - `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` にクリーンコピーして `flutter build ios --release` と `flutter build ipa --release` を実行し、archive と App Store IPA export に成功。IPA は `build/ios/ipa/Attack of the Dragon.ipa`、SHA-256 は `a80d2d6da69039764340e146db5ad4372610981ee43aea486d2a7bf8c6b8e825`。
 - 次のセッションへの申し送り:
-  - 必要なら `codex/release-2026-07-05` から PR を作成し、CI workflow と checklist 更新を `main` に取り込む。
-  - iOS archive / TestFlight 前に、Flutter SDK / engine artifact の `com.apple.provenance` 拡張属性問題を解消してから `flutter build ios --release --no-codesign` または archive を再実行する。
+  - PR #3 は draft のまま。内容確認後、ready にして main へ取り込む。
+  - TestFlight upload は未実施。Transporter で IPA をアップロードするか、App Store Connect API key を用意して `xcrun altool --upload-app --type ios -f build/ios/ipa/*.ipa --apiKey ... --apiIssuer ...` を実行する。
+  - iOS release build / IPA export は `Documents` 直下ではなく `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` のような cache copy で行う。`flutter build ipa` は Launch image がデフォルト placeholder という警告を出すため、提出前に必要なら launch image を差し替える。
 
 ## 2026-07-05 Device: Windows / AI: Codex — main push 準備
 
