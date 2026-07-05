@@ -60,6 +60,7 @@ google-services.json
 *.xcarchive
 
 # Project generated reports/caches
+artifacts/
 ui_report_images/
 __pycache__/
 *.pyc

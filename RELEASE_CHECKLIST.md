@@ -12,7 +12,7 @@
 - [x] `C:\Users\iogam\bin\rtk.exe flutter build windows --release`
 - [x] `C:\Users\iogam\bin\rtk.exe node --check server/score-submit-worker/worker.js`
 - [ ] 現在の提出対象コミットから `artifacts/release-YYYY-MM-DD` に AAB / Web zip / Windows zip / SHA-256 を作成する。(2026-07-04成果物は英語ローカライズ、ATT、SKAdNetwork対応前のため作り直し)
-- [ ] GitHub Actions の `Flutter CI` が通っていることを確認する。(workflow追加後、push / PR で確認)
+- [x] GitHub Actions の `Flutter CI` が通っていることを確認する。(2026-07-05: PR #3 head `eb8e476` の pull_request run `28727606126` / push run `28727604725` が成功)
 
 ## Android
 
@@ -52,7 +52,7 @@
 - [x] アプリ側に広告削除の非消耗型 IAP `remove_ads` を実装する。
 - [x] Cloudflare Worker の `/privacy` でプライバシーポリシーを公開し、ストア提出用 URL として使えることを確認する。
 - [x] `STORE_METADATA_JA.md` にストア掲載文面と申告メモの下書きを作成する。
-- [ ] ストア説明文、スクリーンショット、アイコン、年齢レーティングを確定する。
+- [x] ストア説明文、スクリーンショット、アイコン、年齢レーティングを確定する。(2026-07-05 Mac: `STORE_METADATA_JA.md` と `docs/APP_STORE_REVIEW_PREP.md` に App Store 入力案、年齢レーティング/App Privacy/審査メモを整理。App Icon 1024px は RGB・アルファなし確認済み。App Store 要求寸法の候補スクリーンショットを `artifacts/app-store-submission-2026-07-05/` に生成。最終提出では可能なら Simulator/実機で撮り直す)
 - [x] 配布ページまたはアプリ内に必要なクレジットを載せる。
 - [x] 音声クレジット: `Music: YouFulca (https://youfulca.com/)`
 - [x] フォントクレジット: `M PLUS Rounded 1c (SIL Open Font License 1.1)`

@@ -38,6 +38,22 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-05 Device: Mac / AI: Codex — App Store 審査提出準備
+
+- Branch: `codex/release-2026-07-05`
+- PR: #3 https://github.com/iogami0103/attack-of-dragon/pull/3
+- やったこと:
+  - TestFlight は今回不要という方針に合わせ、チェックリスト、引き継ぎ、PR本文を更新済み。
+  - App Store 審査提出用に `STORE_METADATA_JA.md` を更新し、サブタイトル、プロモーションテキスト、キーワード、Copyright、審査メモ、iOS向けアカウント連携表現を整理。
+  - `docs/APP_STORE_REVIEW_PREP.md` を追加し、build情報、Privacy URL、説明文、スクリーンショット候補、年齢レーティング、App Privacy、App Review notes、残る外部作業を1か所にまとめた。
+  - App Icon 1024px が 1024x1024 / RGB / alphaなしであることを確認。
+  - `tools/generate_app_store_screenshots_test.dart` を追加し、App Store寸法候補のスクリーンショットを生成できるようにした。
+  - `artifacts/app-store-submission-2026-07-05/` に iPhone 6.9インチ 1320x2868、iPad 13インチ 2064x2752 の候補スクリーンショットを生成。生成物は `.gitignore` でコミット対象外。
+- 次のセッションへの申し送り:
+  - App Store Connect の build processing 完了後、build `1` を選択し、メタデータ、スクリーンショット、年齢レーティング、App Privacy、IAP `remove_ads` 添付、契約/税務/銀行情報を画面上で確定する。
+  - headless Web 由来のタイトルスクリーンショットではタイトルロゴが表示されず、iPad Web 候補は画面遷移が取れていないため、最終提出では可能なら iPhone/iPad Simulator または実機から撮り直すとよい。
+  - TestFlight 内部テストは今回不要。
+
 ## 2026-07-05 Device: Mac / AI: Codex — Flutter CI と Mac リリース確認
 
 - Branch: `codex/release-2026-07-05`
