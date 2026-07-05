@@ -47,14 +47,43 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
   - `.github/workflows/flutter-ci.yml` を追加し、`Flutter CI` で `flutter pub get` / `flutter analyze` / `flutter test` / `flutter build web --release` / `flutter build apk --debug` / `node --check server/score-submit-worker/worker.js` を実行するようにした。
   - `app_tracking_transparency` 追加後の `ios/Podfile.lock` を `pod install` で更新し、Linux CI の Android build 用に `android/gradlew` の実行権限を付与。
   - Mac ローカルで `flutter pub get`、`flutter analyze`、`flutter test`、`flutter build web --release`、`flutter build apk --debug`、`node --check server/score-submit-worker/worker.js`、`git diff --check` は通過。
-  - GitHub CLI token に `workflow` scope を追加し、`codex/release-2026-07-05` を push。GitHub Actions `Flutter CI` は PR #3 pull_request run `28724958105` まで成功。
+  - GitHub CLI token に `workflow` scope を追加し、`codex/release-2026-07-05` を push。GitHub Actions `Flutter CI` は最新 push run `28725860542` まで成功。
   - `Documents` 配下の worktree での iOS build は `Flutter.framework` ディレクトリの `com.apple.FinderInfo` / `com.apple.fileprovider.fpfs#P` 拡張属性が codesign に拒否されることを確認。
   - iOS LaunchImage の 1x1 transparent placeholder を `assets/images/title_logo.png` 由来の 300x133pt 1x/2x/3x 画像に差し替え、`flutter build ipa --release` の Launch image placeholder warning が出ないことを確認。
   - `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` にクリーンコピーして `flutter build ios --release` と `flutter build ipa --release` を実行し、archive と App Store IPA export に成功。IPA は `build/ios/ipa/Attack of the Dragon.ipa`、SHA-256 は `2c710e80e656ddafdc71a6c434311e5b07ff9794329676eac67fbb3809a7a990`。
+  - `origin/main` の `46f0ead` を取り込み、main 側で追加されたリリース前レビュー引き継ぎを残した。
 - 次のセッションへの申し送り:
   - PR #3 は draft のまま。内容確認後、ready にして main へ取り込む。
   - TestFlight upload は未実施。Transporter で IPA をアップロードするか、App Store Connect API key を用意して `xcrun altool --upload-app --type ios -f build/ios/ipa/*.ipa --apiKey ... --apiIssuer ...` を実行する。
   - iOS release build / IPA export は `Documents` 直下ではなく `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` のような cache copy で行う。
+
+## 2026-07-05 Device: Windows / AI: Claude — リリース前の全体チェック
+
+- Branch: `main`
+- PR: 未作成
+- やったこと:
+  - リリース前確認として全体をレビュー。`flutter analyze` 指摘ゼロ、`flutter test` 28件全通過。
+  - 問題なしを確認: シークレット類の gitignore 追跡なし、Worker のトークン検証 (RS256 + iss/aud)、ATT→AdMob 初期化の順序、広告IDのリリース/デバッグ切替、IAP の購入復元ボタン実装。
+- 次のセッションへの申し送り:
+  - 【要対応】iOS `Info.plist` に `SKAdNetworkItems` がない。AdMob 必須設定で、ないと iOS 14+ の広告アトリビューションが働かず収益に影響。Google 公式の SKAdNetwork ID リストを提出前に追加する。
+  - 【要対応】`RELEASE_CHECKLIST.md` の `artifacts/release-2026-07-04` はチェック済みだが、その後に英語ローカライズと ATT 対応が main に入っており、`artifacts/` ディレクトリ自体もローカルに存在しない。提出用ビルドは現在の main から作り直す。
+  - 【軽微】`Info.plist` に `ITSAppUsesNonExemptEncryption` = false を追加すると提出ごとの輸出コンプライアンス質問を省略できる (通信は HTTPS のみ)。
+  - 【整合性】チェックリストに「GitHub Actions の Flutter CI 確認」項目があるが、`.github/workflows/` が存在しない。CI を作るか項目を削除するか判断が必要。
+  - 【低優先】`restore()` が `restorePurchases()` 復帰直後に `_busy` を見るため、復元成功時でも「復元できる購入はありません」が一瞬出る可能性 (直後のストリーム処理で自己修復)。
+  - 【既知】英語ストアメタデータは未作成 (`STORE_METADATA_JA.md` のみ)。日本語プライマリの初回提出なら現状で可。
+
+## 2026-07-05 Device: Windows / AI: Codex — Apple先行リリース方針確認
+
+- Branch: `main`
+- PR: 未作成
+- やったこと:
+  - Google側の審査待ち中はApple先行で進める方針を確認。
+  - `main` は `origin/main` と同期済みで、iOSのBundle ID、Team、自動署名、Sign in with Apple entitlement、AdMob iOS App IDは設定済みと確認。
+  - iOS版ではGoogleログイン導線は出ず、Appleログインだけが表示されるため、Google審査待ちはApple版の主要ブロッカーではない見込み。
+- 次のセッションへの申し送り:
+  - App Store ConnectのBusiness/AgreementsでAccount Holderが最新のPaid Apps Agreementに同意することを最優先にする。IAP `remove_ads` を出すため、契約・税務・銀行情報の未完了があると提出で詰まる。
+  - Mac/Xcodeで自動署名のprovisioning更新、archive/TestFlightアップロード、内部TestFlight確認、ASCメタデータ・スクリーンショット・年齢レーティング・App Privacy入力を進める。
+  - App Store向け説明文ではiOS実装に合わせて「Google / Appleアカウント連携」ではなく「Appleアカウント連携」中心にする。
 
 ## 2026-07-05 Device: Windows / AI: Codex — main push 準備
 
