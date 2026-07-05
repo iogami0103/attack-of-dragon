@@ -12,7 +12,7 @@
 - [x] `C:\Users\iogam\bin\rtk.exe flutter build windows --release`
 - [x] `C:\Users\iogam\bin\rtk.exe node --check server/score-submit-worker/worker.js`
 - [x] `artifacts/release-2026-07-04` に AAB / Web zip / Windows zip / SHA-256 を作成する。
-- [x] GitHub Actions の `Flutter CI` が通っていることを確認する。(2026-07-05 Mac: PR #3 pull_request run `28724958105` が成功)
+- [x] GitHub Actions の `Flutter CI` が通っていることを確認する。(2026-07-05 Mac: PR #3 で確認)
 
 ## Android
 
@@ -33,7 +33,8 @@
 - [x] Apple Developer で `Sign in with Apple` capability を有効化する。(2026-07-04 確認: 既存 App ID `io.github.iogami0103.attackofthedragon` (XC 自動生成) に Sign In with Apple (primary) が有効化済みだった。チーム 95RP2F687Q)
 - [ ] provisioning profile を更新する。
 - [ ] AdMob の iOS アプリ設定が本番 bundle ID と一致していることを確認する。
-- [ ] Mac/Xcode 環境で archive / TestFlight 提出を確認する。(2026-07-05 Mac: `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` のクリーンコピーで `flutter build ios --release` と `flutter build ipa --release` が成功。IPA: `build/ios/ipa/Attack of the Dragon.ipa` / SHA-256 `a80d2d6da69039764340e146db5ad4372610981ee43aea486d2a7bf8c6b8e825`。TestFlight upload は Transporter または App Store Connect API key が必要なため未実施。`Documents` 配下の build 出力では `Flutter.framework` ディレクトリに `com.apple.FinderInfo` / `com.apple.fileprovider.fpfs#P` が付き codesign 失敗するため、iOS release build は cache copy で行う)
+- [x] iOS LaunchImage をアプリ固有のタイトルロゴに差し替え、`flutter build ipa --release` の default placeholder warning が出ないことを確認する。(2026-07-05 Mac)
+- [ ] Mac/Xcode 環境で archive / TestFlight 提出を確認する。(2026-07-05 Mac: `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` のクリーンコピーで `flutter build ios --release` と `flutter build ipa --release` が成功。IPA: `build/ios/ipa/Attack of the Dragon.ipa` / SHA-256 `2c710e80e656ddafdc71a6c434311e5b07ff9794329676eac67fbb3809a7a990`。TestFlight upload は Transporter または App Store Connect API key が必要なため未実施。`Documents` 配下の build 出力では `Flutter.framework` ディレクトリに `com.apple.FinderInfo` / `com.apple.fileprovider.fpfs#P` が付き codesign 失敗するため、iOS release build は cache copy で行う)
 
 ## Cloudflare Worker / D1
 
