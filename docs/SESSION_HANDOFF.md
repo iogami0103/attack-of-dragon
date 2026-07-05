@@ -49,14 +49,31 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
   - Mac ローカルで `flutter pub get`、`flutter analyze`、`flutter test`、`flutter build web --release`、`flutter build apk --debug`、`node --check server/score-submit-worker/worker.js`、`git diff --check` は通過。
   - GitHub CLI token に `workflow` scope を追加し、`codex/release-2026-07-05` を push。GitHub Actions `Flutter CI` は最新 push run `28725860542` まで成功。
   - `Documents` 配下の worktree での iOS build は `Flutter.framework` ディレクトリの `com.apple.FinderInfo` / `com.apple.fileprovider.fpfs#P` 拡張属性が codesign に拒否されることを確認。
-  - Google 公式 AdMob iOS quick start の SKAdNetwork IDs 50件を `ios/Runner/Info.plist` に追加し、`ITSAppUsesNonExemptEncryption=false` も設定。IPA 内 `Info.plist` で SKAdNetworkItems 50件、本番 AdMob App ID、non-exempt encryption false を確認。
   - iOS LaunchImage の 1x1 transparent placeholder を `assets/images/title_logo.png` 由来の 300x133pt 1x/2x/3x 画像に差し替え、`flutter build ipa --release` の Launch image placeholder warning が出ないことを確認。
-  - `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` にクリーンコピーして `flutter build ios --release` と `flutter build ipa --release` を実行し、archive と App Store IPA export に成功。IPA は `build/ios/ipa/Attack of the Dragon.ipa`、SHA-256 は `e6d45d36d63a8b0bcc6493e9b013724066b6ffaf760537083a73706e04685d26`。
-  - `origin/main` の `46f0ead` を取り込み、main 側で追加されたリリース前レビュー引き継ぎを残した。
+  - `origin/main` の `9f1597d` まで取り込み、main 側で追加された iOS 広告提出設定、LaunchImage、CI workflow、Windows workflow check 修正を残した。
 - 次のセッションへの申し送り:
   - PR #3 は draft のまま。内容確認後、ready にして main へ取り込む。
   - TestFlight upload は未実施。Transporter で IPA をアップロードするか、App Store Connect API key を用意して `xcrun altool --upload-app --type ios -f build/ios/ipa/*.ipa --apiKey ... --apiIssuer ...` を実行する。
   - iOS release build / IPA export は `Documents` 直下ではなく `~/Library/Caches/AttackOfTheDragon/iOSReleaseCheck` のような cache copy で行う。
+
+## 2026-07-05 Device: Windows / AI: Codex — iOS広告提出設定とCI整合性対応
+
+- Branch: `codex/release-prep-fixes`
+- PR: 未作成
+- やったこと:
+  - `ios/Runner/Info.plist` に Google公式ドキュメント (2026-07-01更新) の `SKAdNetworkItems` 50件を追加。
+  - `ios/Runner/Info.plist` に `ITSAppUsesNonExemptEncryption` = false を追加し、提出時の輸出暗号申告を簡略化できる状態にした。
+  - `origin/codex/release-2026-07-05` の iOS LaunchImage 差し替えコミットを取り込み、1x/2x/3x launch image と storyboard のサイズ指定を更新。
+  - `.github/workflows/flutter-ci.yml` を追加し、チェックリスト上の `Flutter CI` 確認項目とリポジトリ実体を揃えた。
+  - `tools/github_workflow_check.ps1` が upstream 未設定の新規ブランチで失敗する問題と、RTK の clean status 出力 `ok` を作業ツリー変更として誤判定する問題を修正。
+  - `RELEASE_CHECKLIST.md` を更新し、古い `artifacts/release-2026-07-04` 成果物は現在の提出対象として作り直しが必要な扱いに戻した。
+  - `test/widget_test.dart` に iOS `Info.plist` の広告アトリビューション設定と輸出暗号設定の検証を追加。
+  - `tools\github_workflow_check.ps1 -RunFlutterChecks` は通過。
+- 次のセッションへの申し送り:
+  - ローカルコミット済み。push / PR は未実施なので、push後に GitHub Actions の `Flutter CI` 成功を確認する。
+  - `gh` はこのWindows環境で未ログイン。PR作成まで行う場合は `gh auth login` が必要。
+  - 提出用 AAB / Web zip / Windows zip / SHA-256 と、Mac/Xcode の iOS archive / IPA / TestFlight は、このブランチまたは取り込み後の最新コミットから作り直す。
+  - App Store Connect の契約同意、AdMob iOS/Android アプリ設定確認、iOS ATT ダイアログの実機 fresh install 確認は引き続き外部作業として残る。
 
 ## 2026-07-05 Device: Windows / AI: Claude — リリース前の全体チェック
 

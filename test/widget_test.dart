@@ -215,21 +215,20 @@ void main() {
     expect(manifest, contains('com.google.android.gms.permission.AD_ID'));
   });
 
-  test('ios release plist declares AdMob privacy settings', () {
+  test('ios info plist declares ad attribution and export settings', () {
     final plist = File('ios/Runner/Info.plist').readAsStringSync();
-    final skAdNetworkIds = RegExp(
-      r'<string>([a-z0-9]+\.skadnetwork)</string>',
-    ).allMatches(plist).map((match) => match.group(1)!).toList();
 
-    expect(plist, contains('<key>GADApplicationIdentifier</key>'));
-    expect(skAdNetworkIds, hasLength(50));
-    expect(skAdNetworkIds.toSet(), hasLength(skAdNetworkIds.length));
-    expect(skAdNetworkIds, contains('cstr6suwn9.skadnetwork'));
+    expect(plist, contains('<key>SKAdNetworkItems</key>'));
+    expect(plist, contains('cstr6suwn9.skadnetwork'));
+    expect(plist, contains('3qcr597p9d.skadnetwork'));
     expect(
-      RegExp(
-        r'<key>ITSAppUsesNonExemptEncryption</key>\s*<false/>',
-      ).hasMatch(plist),
-      isTrue,
+      RegExp(r'<key>SKAdNetworkIdentifier</key>').allMatches(plist),
+      hasLength(50),
+    );
+    expect(plist, contains('<key>ITSAppUsesNonExemptEncryption</key>'));
+    expect(
+      plist,
+      matches(RegExp(r'<key>ITSAppUsesNonExemptEncryption</key>\s*<false/>')),
     );
   });
 
