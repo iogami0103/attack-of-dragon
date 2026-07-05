@@ -38,6 +38,21 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-05 Device: Mac / AI: Codex — Flutter CI と Mac リリース確認
+
+- Branch: `codex/release-2026-07-05`
+- PR: 未作成 (push が GitHub token の `workflow` scope 不足で停止)
+- やったこと:
+  - `origin/main` からクリーンな release worktree `/Users/user/Documents/Attack_of_the_Dragon_release_worktree` を作成し、元の作業ツリーの未コミット差分には触れずに作業。
+  - `.github/workflows/flutter-ci.yml` を追加し、`Flutter CI` で `flutter pub get` / `flutter analyze` / `flutter test` / `flutter build web --release` / `flutter build apk --debug` / `node --check server/score-submit-worker/worker.js` を実行するようにした。
+  - `app_tracking_transparency` 追加後の `ios/Podfile.lock` を `pod install` で更新し、Linux CI の Android build 用に `android/gradlew` の実行権限を付与。
+  - Mac ローカルで `flutter pub get`、`flutter analyze`、`flutter test`、`flutter build web --release`、`flutter build apk --debug`、`node --check server/score-submit-worker/worker.js`、`git diff --check` は通過。
+  - `flutter build ios --release --no-codesign` は Xcode 26.6 で試行したが、Flutter SDK の `Flutter.framework/Flutter` に `com.apple.provenance` 拡張属性が残り、codesign の `resource fork, Finder information, or similar detritus not allowed` で失敗。
+- 次のセッションへの申し送り:
+  - push には `gh auth refresh -h github.com -s workflow` で GitHub CLI token に `workflow` scope を追加する必要がある。今回の device code 認証は未完了で中断済み。
+  - scope 追加後、`/Users/user/Documents/Attack_of_the_Dragon_release_worktree` で `git push -u origin codex/release-2026-07-05` を再実行し、`Flutter CI` の GitHub Actions 通過を確認する。
+  - iOS archive / TestFlight 前に、Flutter SDK / engine artifact の `com.apple.provenance` 拡張属性問題を解消してから `flutter build ios --release --no-codesign` または archive を再実行する。
+
 ## 2026-07-05 Device: Windows / AI: Codex — main push 準備
 
 - Branch: `main`

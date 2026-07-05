@@ -12,7 +12,7 @@
 - [x] `C:\Users\iogam\bin\rtk.exe flutter build windows --release`
 - [x] `C:\Users\iogam\bin\rtk.exe node --check server/score-submit-worker/worker.js`
 - [x] `artifacts/release-2026-07-04` に AAB / Web zip / Windows zip / SHA-256 を作成する。
-- [ ] GitHub Actions の `Flutter CI` が通っていることを確認する。
+- [ ] GitHub Actions の `Flutter CI` が通っていることを確認する。(2026-07-05 Mac: `codex/release-2026-07-05` で workflow を追加済み。push は GitHub token の `workflow` scope 追加後に再実行し、CI 通過を確認する)
 
 ## Android
 
@@ -33,7 +33,7 @@
 - [x] Apple Developer で `Sign in with Apple` capability を有効化する。(2026-07-04 確認: 既存 App ID `io.github.iogami0103.attackofthedragon` (XC 自動生成) に Sign In with Apple (primary) が有効化済みだった。チーム 95RP2F687Q)
 - [ ] provisioning profile を更新する。
 - [ ] AdMob の iOS アプリ設定が本番 bundle ID と一致していることを確認する。
-- [ ] Mac/Xcode 環境で archive / TestFlight 提出を確認する。
+- [ ] Mac/Xcode 環境で archive / TestFlight 提出を確認する。(2026-07-05 Mac: Xcode 26.6 で `flutter build ios --release --no-codesign` を試行したが、Flutter SDK 由来の `Flutter.framework/Flutter` に `com.apple.provenance` 拡張属性が残り codesign で失敗。archive 前に Flutter SDK / engine artifact 側の拡張属性対処が必要)
 
 ## Cloudflare Worker / D1
 
