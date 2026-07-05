@@ -11,8 +11,8 @@
 - [x] `C:\Users\iogam\bin\rtk.exe flutter build appbundle --release`
 - [x] `C:\Users\iogam\bin\rtk.exe flutter build windows --release`
 - [x] `C:\Users\iogam\bin\rtk.exe node --check server/score-submit-worker/worker.js`
-- [x] `artifacts/release-2026-07-04` に AAB / Web zip / Windows zip / SHA-256 を作成する。
-- [ ] GitHub Actions の `Flutter CI` が通っていることを確認する。
+- [ ] 現在の提出対象コミットから `artifacts/release-YYYY-MM-DD` に AAB / Web zip / Windows zip / SHA-256 を作成する。(2026-07-04成果物は英語ローカライズ、ATT、SKAdNetwork対応前のため作り直し)
+- [ ] GitHub Actions の `Flutter CI` が通っていることを確認する。(workflow追加後、push / PR で確認)
 
 ## Android
 
@@ -31,9 +31,11 @@
 - [x] 本番 bundle ID を `io.github.iogami0103.attackofthedragon` に確定する。(2026-07-04: 同名の Xcode 自動生成 App ID が既にチーム内に存在し、それをそのまま使用)
 - [x] App Store Connect で非消耗型のアプリ内課金 `remove_ads` を作成し、価格を 300円相当に設定する。(2026-07-04 完了: ASC アプリ「Attack of the Dragon」(Apple ID 6787345039, SKU `attackofthedragon`) を作成し、非消耗型 `remove_ads` を基準価格 日本 ¥300 で作成。日本語ローカリゼーション「広告削除」設定済み。審査用スクリーンショットは初回提出時に追加が必要)
 - [x] Apple Developer で `Sign in with Apple` capability を有効化する。(2026-07-04 確認: 既存 App ID `io.github.iogami0103.attackofthedragon` (XC 自動生成) に Sign In with Apple (primary) が有効化済みだった。チーム 95RP2F687Q)
+- [x] `Info.plist` に AdMob の `SKAdNetworkItems` を追加する。(2026-07-05: Google公式の2026-07-01更新リスト50件を反映)
+- [x] `Info.plist` に `ITSAppUsesNonExemptEncryption` = false を追加する。
 - [ ] provisioning profile を更新する。
 - [ ] AdMob の iOS アプリ設定が本番 bundle ID と一致していることを確認する。
-- [ ] Mac/Xcode 環境で archive / TestFlight 提出を確認する。
+- [ ] Mac/Xcode 環境で archive / TestFlight 提出を確認する。(2026-07-05のMacブランチでIPA build成功記録あり。ただしSKAdNetwork追加後の現在コミットから再実行する)
 
 ## Cloudflare Worker / D1
 

@@ -90,14 +90,14 @@ if ($LASTEXITCODE -ne 0) {
 $branchName = ($branch | Select-Object -First 1).ToString().Trim()
 Write-Host "Current branch: $branchName"
 
-$upstream = & $Rtk git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>$null
-if ($LASTEXITCODE -eq 0) {
-    $upstreamName = ($upstream | Select-Object -First 1).ToString().Trim()
+$upstream = Invoke-Rtk -Arguments @('git', 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}') -AllowFailure -Quiet
+if ($upstream.ExitCode -eq 0) {
+    $upstreamName = ($upstream.Output | Select-Object -First 1).ToString().Trim()
     Write-Host "Upstream: $upstreamName"
 
-    $counts = & $Rtk git rev-list --left-right --count 'HEAD...@{upstream}' 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        $parts = (($counts | Select-Object -First 1).ToString().Trim() -split '\s+')
+    $counts = Invoke-Rtk -Arguments @('git', 'rev-list', '--left-right', '--count', 'HEAD...@{upstream}') -AllowFailure -Quiet
+    if ($counts.ExitCode -eq 0) {
+        $parts = (($counts.Output | Select-Object -First 1).ToString().Trim() -split '\s+')
         if ($parts.Count -eq 2) {
             Write-Host "Ahead: $($parts[0])"
             Write-Host "Behind: $($parts[1])"
@@ -108,7 +108,10 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 Write-Section 'Working tree'
-$dirty = & $Rtk git status --porcelain 2>&1
+$dirty = @(& $Rtk git status --porcelain 2>&1) | Where-Object {
+    $line = $_.ToString().Trim()
+    $line -and $line -ne 'ok'
+}
 if ($LASTEXITCODE -ne 0) {
     $dirty | ForEach-Object { Write-Host $_ }
     throw 'Could not read working tree status.'

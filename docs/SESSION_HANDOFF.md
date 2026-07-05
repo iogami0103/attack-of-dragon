@@ -38,6 +38,24 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-05 Device: Windows / AI: Codex — iOS広告提出設定とCI整合性対応
+
+- Branch: `codex/release-prep-fixes`
+- PR: 未作成
+- やったこと:
+  - `ios/Runner/Info.plist` に Google公式ドキュメント (2026-07-01更新) の `SKAdNetworkItems` 50件を追加。
+  - `ios/Runner/Info.plist` に `ITSAppUsesNonExemptEncryption` = false を追加し、提出時の輸出暗号申告を簡略化できる状態にした。
+  - `.github/workflows/flutter-ci.yml` を追加し、チェックリスト上の `Flutter CI` 確認項目とリポジトリ実体を揃えた。
+  - `tools/github_workflow_check.ps1` が upstream 未設定の新規ブランチで失敗する問題と、RTK の clean status 出力 `ok` を作業ツリー変更として誤判定する問題を修正。
+  - `RELEASE_CHECKLIST.md` を更新し、古い `artifacts/release-2026-07-04` 成果物は現在の提出対象として作り直しが必要な扱いに戻した。
+  - `test/widget_test.dart` に iOS `Info.plist` の広告アトリビューション設定と輸出暗号設定の検証を追加。
+  - `flutter analyze`、`flutter test`、`tools\github_workflow_check.ps1 -RunFlutterChecks` は通過。
+- 次のセッションへの申し送り:
+  - ローカルコミット済み。push / PR は未実施なので、push後に GitHub Actions の `Flutter CI` 成功を確認する。
+  - `gh` はこのWindows環境で未ログイン。PR作成まで行う場合は `gh auth login` が必要。
+  - 提出用 AAB / Web zip / Windows zip / SHA-256 と、Mac/Xcode の iOS archive / IPA / TestFlight は、このブランチまたは取り込み後の最新コミットから作り直す。
+  - App Store Connect の契約同意、AdMob iOS/Android アプリ設定確認、iOS ATT ダイアログの実機 fresh install 確認は引き続き外部作業として残る。
+
 ## 2026-07-05 Device: Windows / AI: Claude — リリース前の全体チェック
 
 - Branch: `main`

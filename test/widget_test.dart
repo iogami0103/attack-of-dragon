@@ -215,6 +215,23 @@ void main() {
     expect(manifest, contains('com.google.android.gms.permission.AD_ID'));
   });
 
+  test('ios info plist declares ad attribution and export settings', () {
+    final plist = File('ios/Runner/Info.plist').readAsStringSync();
+
+    expect(plist, contains('<key>SKAdNetworkItems</key>'));
+    expect(plist, contains('cstr6suwn9.skadnetwork'));
+    expect(plist, contains('3qcr597p9d.skadnetwork'));
+    expect(
+      RegExp(r'<key>SKAdNetworkIdentifier</key>').allMatches(plist),
+      hasLength(50),
+    );
+    expect(plist, contains('<key>ITSAppUsesNonExemptEncryption</key>'));
+    expect(
+      plist,
+      matches(RegExp(r'<key>ITSAppUsesNonExemptEncryption</key>\s*<false/>')),
+    );
+  });
+
   test('filterByPeriod applies scoreboard date ranges', () {
     final now = DateTime(2026, 7, 2, 12);
     final scores = [
