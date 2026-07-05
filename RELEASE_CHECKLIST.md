@@ -35,7 +35,8 @@
 - [x] `Info.plist` に `ITSAppUsesNonExemptEncryption` = false を追加する。
 - [ ] provisioning profile を更新する。
 - [ ] AdMob の iOS アプリ設定が本番 bundle ID と一致していることを確認する。
-- [ ] Mac/Xcode 環境で archive / TestFlight 提出を確認する。(2026-07-05のMacブランチでIPA build成功記録あり。ただしSKAdNetwork追加後の現在コミットから再実行する)
+- [x] iOS LaunchImage をアプリ固有のタイトルロゴに差し替え、`flutter build ipa --release` の default placeholder warning が出ないことを確認する。(2026-07-05 Mac)
+- [ ] Mac/Xcode 環境で archive / TestFlight 提出を確認する。(2026-07-05 MacブランチでLaunchImage差し替え後のIPA build成功記録あり。ただしSKAdNetwork追加後の現在コミットから再実行する)
 
 ## Cloudflare Worker / D1
 
