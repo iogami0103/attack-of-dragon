@@ -7,12 +7,18 @@
 - Default branch: `main`
 - Codex work branch prefix: `codex/`
 
-## Windows 側の準備
+## RTK の使い分け
 
-このPCでは Codex のシェルコマンドを必ず RTK 経由で実行します。
+Windows PC では Codex のシェルコマンドを必ず Windows 側の絶対パス RTK 経由で実行します。
 
 ```powershell
 C:\Users\iogam\bin\rtk.exe git status --short --branch
+```
+
+Mac では Homebrew の RTK を絶対パスで実行します。
+
+```bash
+/opt/homebrew/bin/rtk git status --short --branch
 ```
 
 このリポジトリではローカル設定として以下を入れています。
@@ -20,6 +26,11 @@ C:\Users\iogam\bin\rtk.exe git status --short --branch
 ```powershell
 C:\Users\iogam\bin\rtk.exe git config --local pull.ff only
 C:\Users\iogam\bin\rtk.exe git config --local fetch.prune true
+```
+
+```bash
+/opt/homebrew/bin/rtk git config --local pull.ff only
+/opt/homebrew/bin/rtk git config --local fetch.prune true
 ```
 
 これにより、履歴がずれている状態で不用意な merge commit を作らず、消えたリモートブランチも整理されます。
@@ -32,6 +43,12 @@ Windows PC / Mac のローカル作業では、開始時に必ず最新化しま
 C:\Users\iogam\bin\rtk.exe git fetch --prune origin
 C:\Users\iogam\bin\rtk.exe git status --short --branch
 C:\Users\iogam\bin\rtk.exe git pull --ff-only
+```
+
+```bash
+/opt/homebrew/bin/rtk git fetch --prune origin
+/opt/homebrew/bin/rtk git status --short --branch
+/opt/homebrew/bin/rtk git pull --ff-only
 ```
 
 `git pull --ff-only` が失敗した場合は、Windows と Mac の変更が分岐しています。無理に解消せず、差分を確認してから作業します。
@@ -50,6 +67,10 @@ Android スマホの Claude やブラウザだけで作業する場合は、GitH
 C:\Users\iogam\bin\rtk.exe git switch -c codex/short-task
 ```
 
+```bash
+/opt/homebrew/bin/rtk git switch -c codex/short-task
+```
+
 小さなリポジトリ整理だけをユーザーが直接依頼している場合は、`main` に直接コミットして push しても構いません。
 
 ## 確認
@@ -60,16 +81,28 @@ C:\Users\iogam\bin\rtk.exe git switch -c codex/short-task
 C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\github_workflow_check.ps1
 ```
 
+```bash
+/opt/homebrew/bin/rtk bash tools/github_workflow_check.sh
+```
+
 コード変更を含む場合:
 
 ```powershell
 C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\github_workflow_check.ps1 -RunFlutterChecks
 ```
 
+```bash
+/opt/homebrew/bin/rtk bash tools/github_workflow_check.sh --run-flutter-checks
+```
+
 Android のビルド設定に触った場合:
 
 ```powershell
 C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\github_workflow_check.ps1 -RunFlutterChecks -BuildDebugApk
+```
+
+```bash
+/opt/homebrew/bin/rtk bash tools/github_workflow_check.sh --run-flutter-checks --build-debug-apk
 ```
 
 ## GitHub CLI
@@ -80,10 +113,18 @@ C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\github
 C:\Users\iogam\bin\rtk.exe gh auth status
 ```
 
+```bash
+/opt/homebrew/bin/rtk gh auth status
+```
+
 未ログインの場合、ブラウザ承認が必要です。
 
 ```powershell
 C:\Users\iogam\bin\rtk.exe gh auth login
+```
+
+```bash
+/opt/homebrew/bin/rtk gh auth login
 ```
 
 ## セッションの引き継ぎ

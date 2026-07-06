@@ -8,17 +8,37 @@ Flutter で実装した縦画面向けエンドレス飛行アクションです
 
 Windows と Mac の両方で同じリポジトリを使います。作業前に必ずリモートを取得し、fast-forward できる状態で始めます。
 
+Windows:
+
 ```powershell
 C:\Users\iogam\bin\rtk.exe git fetch --prune origin
 C:\Users\iogam\bin\rtk.exe git status --short --branch
 C:\Users\iogam\bin\rtk.exe git pull --ff-only
 ```
 
+Mac:
+
+```bash
+/opt/homebrew/bin/rtk git fetch --prune origin
+/opt/homebrew/bin/rtk git status --short --branch
+/opt/homebrew/bin/rtk git pull --ff-only
+```
+
 Codex で作業する場合の詳細は `AGENTS.md`、人間向けの手順は `docs/GITHUB_WORKFLOW.md`、Mac/Windows で秘密情報を復元する手順は `docs/LOCAL_SECRETS.md` にまとめています。ローカル状態の確認は次のコマンドで実行できます。
+
+Windows:
 
 ```powershell
 C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\github_workflow_check.ps1
 ```
+
+Mac:
+
+```bash
+/opt/homebrew/bin/rtk bash tools/github_workflow_check.sh
+```
+
+以降の PowerShell 例は Windows 用です。Mac で同じ Flutter / GitHub CLI コマンドを直接実行する場合は、先頭を `/opt/homebrew/bin/rtk` に置き換え、パス区切りは macOS の形式にしてください。
 
 ビルド成果物、Flutter/CocoaPods の生成物、署名鍵、ローカル設定はコミットしません。`android/key.properties.example` と `server/score-submit-worker/wrangler.toml.example` をコピーし、各自のローカル環境で実値を入れてください。
 
@@ -26,7 +46,7 @@ C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\github
 
 Windows ではプロジェクト直下の `進撃のドラゴン PC 起動.cmd` を使うと、依存取得、Windowsリリースビルド、起動まで行います。
 
-iPhone へ入れる場合は Mac で `進撃のドラゴン iPhone インストール.command` を実行します。ビルド完了後、インストール直前にiPhoneロック解除の確認で一度止まります。
+iPhone へ入れる場合は Mac で `進撃のドラゴン iPhone インストール（GitHub最新版）.command` または `進撃のドラゴン iPhone インストール（ローカル変更）.command` を実行します。ビルド完了後、インストール直前にiPhoneロック解除の確認で一度止まります。
 
 Flutter コマンドで直接起動する場合:
 

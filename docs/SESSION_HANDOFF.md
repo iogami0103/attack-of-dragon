@@ -7,7 +7,7 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 ## 共有運用
 
 - GitHub を唯一の共有状態として扱う。作業開始時は必ず最新の `main`、関連 PR、直近のこのログを確認する。
-- Windows PC / Mac のローカル作業では、開始時に `git fetch --prune origin`、`git status --short --branch`、`git pull --ff-only` を実行する。
+- Windows PC / Mac のローカル作業では、開始時にプラットフォームごとの RTK 経由で `git fetch --prune origin`、`git status --short --branch`、`git pull --ff-only` を実行する。
 - Android スマホの Claude やブラウザだけで作業する場合は、GitHub 上の `main`、PR、Actions、このファイルを確認してから編集・コメント・PR 作成を行う。
 - 端末やセッションが変わっても、次の AI はこのファイルの最新エントリから作業状況を把握する。
 - 同じファイルを複数端末で同時に編集しない。特にこのファイルは全端末が追記するため、作業開始前と終了前に GitHub の最新版を確認する。
@@ -37,6 +37,19 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 ```
 
 ## ログ
+
+## 2026-07-06 Device: Mac / AI: Codex — Mac RTK 手順を追加
+
+- Branch: `main`
+- PR: 未作成
+- やったこと:
+  - `AGENTS.md` と GitHub 作業ドキュメントを、Mac では `/opt/homebrew/bin/rtk` を使う前提に更新。
+  - `tools/github_workflow_check.sh` を追加し、Mac でも RTK 経由で GitHub 作業チェック、Flutter analyze/test、必要時の debug APK build を実行できるようにした。
+  - `tools/install_ios_to_iphone.sh` と `tools/local_secret_inventory.sh` の Git 呼び出しも Mac RTK を優先するようにした。
+  - `/opt/homebrew/bin/rtk bash tools/github_workflow_check.sh --skip-fetch --run-flutter-checks` は通過。
+- 次のセッションへの申し送り:
+  - Mac では Windows の `C:\Users\iogam\bin\rtk.exe` ではなく `/opt/homebrew/bin/rtk` を使う。
+  - PowerShell がない Mac では `tools/github_workflow_check.ps1` ではなく `tools/github_workflow_check.sh` を使う。
 
 ## 2026-07-06 Device: Mac / AI: Codex — iPhoneインストール元選択を追加
 

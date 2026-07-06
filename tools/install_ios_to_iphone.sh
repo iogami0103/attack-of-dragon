@@ -18,7 +18,13 @@ EXIT_CODE=0
 SOURCE_FINGERPRINT=""
 STAMP_FILE=""
 
-if command -v rtk >/dev/null 2>&1; then
+if [ -n "${RTK_PATH:-}" ]; then
+  RTK=("$RTK_PATH")
+elif [ -x /opt/homebrew/bin/rtk ]; then
+  RTK=(/opt/homebrew/bin/rtk)
+elif [ -x /usr/local/bin/rtk ]; then
+  RTK=(/usr/local/bin/rtk)
+elif command -v rtk >/dev/null 2>&1; then
   RTK=(rtk)
 else
   RTK=()
@@ -43,8 +49,8 @@ fail() {
 prepare_github_latest_source() {
   mkdir -p "$CACHE_ROOT" || return 1
 
-  if [ -z "$GITHUB_INSTALL_REMOTE_URL" ] && git -C "$SCRIPT_SOURCE_ROOT" remote get-url origin >/dev/null 2>&1; then
-    GITHUB_INSTALL_REMOTE_URL="$(git -C "$SCRIPT_SOURCE_ROOT" remote get-url origin)"
+  if [ -z "$GITHUB_INSTALL_REMOTE_URL" ] && run git -C "$SCRIPT_SOURCE_ROOT" remote get-url origin >/dev/null 2>&1; then
+    GITHUB_INSTALL_REMOTE_URL="$(run git -C "$SCRIPT_SOURCE_ROOT" remote get-url origin)"
   fi
 
   if [ -z "$GITHUB_INSTALL_REMOTE_URL" ]; then
@@ -54,17 +60,17 @@ prepare_github_latest_source() {
   echo "Preparing GitHub latest source from origin/$GITHUB_INSTALL_BRANCH..."
 
   if [ -d "$GITHUB_SOURCE_ROOT/.git" ]; then
-    git -C "$GITHUB_SOURCE_ROOT" remote set-url origin "$GITHUB_INSTALL_REMOTE_URL" || return 1
-    git -C "$GITHUB_SOURCE_ROOT" fetch --prune origin || return 1
+    run git -C "$GITHUB_SOURCE_ROOT" remote set-url origin "$GITHUB_INSTALL_REMOTE_URL" || return 1
+    run git -C "$GITHUB_SOURCE_ROOT" fetch --prune origin || return 1
   else
     rm -rf "$GITHUB_SOURCE_ROOT"
-    git clone --no-checkout "$GITHUB_INSTALL_REMOTE_URL" "$GITHUB_SOURCE_ROOT" || return 1
-    git -C "$GITHUB_SOURCE_ROOT" fetch --prune origin || return 1
+    run git clone --no-checkout "$GITHUB_INSTALL_REMOTE_URL" "$GITHUB_SOURCE_ROOT" || return 1
+    run git -C "$GITHUB_SOURCE_ROOT" fetch --prune origin || return 1
   fi
 
-  git -C "$GITHUB_SOURCE_ROOT" checkout --detach "origin/$GITHUB_INSTALL_BRANCH" || return 1
-  git -C "$GITHUB_SOURCE_ROOT" reset --hard "origin/$GITHUB_INSTALL_BRANCH" || return 1
-  git -C "$GITHUB_SOURCE_ROOT" clean -fdx || return 1
+  run git -C "$GITHUB_SOURCE_ROOT" checkout --detach "origin/$GITHUB_INSTALL_BRANCH" || return 1
+  run git -C "$GITHUB_SOURCE_ROOT" reset --hard "origin/$GITHUB_INSTALL_BRANCH" || return 1
+  run git -C "$GITHUB_SOURCE_ROOT" clean -fdx || return 1
 
   SOURCE_ROOT="$GITHUB_SOURCE_ROOT"
   ROOT_DIR="$SOURCE_ROOT"
@@ -87,36 +93,36 @@ update_from_github() {
     return 0
   fi
 
-  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if ! run git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "Git repository was not found. Skipping GitHub update."
     return 0
   fi
 
-  if [ -n "$(git status --porcelain)" ]; then
+  if [ -n "$(run git status --porcelain)" ]; then
     echo "ERROR: Local changes exist. Commit or discard them before installing."
     echo
-    git status --short
+    run git status --short
     return 1
   fi
 
-  if ! git remote get-url origin >/dev/null 2>&1; then
+  if ! run git remote get-url origin >/dev/null 2>&1; then
     echo "Git remote 'origin' was not found. Skipping GitHub update."
     return 0
   fi
 
   echo "Updating project from GitHub..."
-  git fetch origin || return 1
+  run git fetch origin || return 1
 
-  CURRENT_BRANCH="$(git branch --show-current)"
+  CURRENT_BRANCH="$(run git branch --show-current)"
   if [ -z "$CURRENT_BRANCH" ]; then
     echo "ERROR: Could not determine the current Git branch."
     return 1
   fi
 
-  if git rev-parse --verify "origin/$CURRENT_BRANCH" >/dev/null 2>&1; then
-    git merge --ff-only "origin/$CURRENT_BRANCH" || return 1
+  if run git rev-parse --verify "origin/$CURRENT_BRANCH" >/dev/null 2>&1; then
+    run git merge --ff-only "origin/$CURRENT_BRANCH" || return 1
   else
-    git pull --ff-only || return 1
+    run git pull --ff-only || return 1
   fi
 }
 

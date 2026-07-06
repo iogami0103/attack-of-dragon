@@ -28,7 +28,7 @@
 1. GitHub からプロジェクトを clone する。
 
 ```bash
-git clone https://github.com/iogami0103/attack-of-dragon.git
+/opt/homebrew/bin/rtk git clone https://github.com/iogami0103/attack-of-dragon.git
 cd attack-of-dragon
 ```
 
@@ -45,14 +45,14 @@ cp /path/to/secure/attack-of-dragon/server/score-submit-worker/wrangler.toml ser
 4. GitHub CLI を使う場合はログインする。
 
 ```bash
-gh auth status
-gh auth login
+/opt/homebrew/bin/rtk gh auth status
+/opt/homebrew/bin/rtk gh auth login
 ```
 
 5. ローカル秘密情報の配置と Git 除外を確認する。
 
 ```bash
-bash tools/local_secret_inventory.sh
+/opt/homebrew/bin/rtk bash tools/local_secret_inventory.sh
 ```
 
 ## Windows で確認する流れ
@@ -73,7 +73,7 @@ C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\local_
 通常のGitHub作業確認:
 
 ```bash
-bash tools/local_secret_inventory.sh
+/opt/homebrew/bin/rtk bash tools/local_secret_inventory.sh
 ```
 
 Windows:
@@ -86,4 +86,10 @@ C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\local_
 
 ```powershell
 C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\github_workflow_check.ps1 -RunFlutterChecks
+```
+
+Mac:
+
+```bash
+/opt/homebrew/bin/rtk bash tools/github_workflow_check.sh --run-flutter-checks
 ```

@@ -1,7 +1,23 @@
 #!/usr/bin/env bash
 set -u
 
-repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -n "${RTK_PATH:-}" ]; then
+  RTK=("$RTK_PATH")
+elif [ -x /opt/homebrew/bin/rtk ]; then
+  RTK=(/opt/homebrew/bin/rtk)
+elif [ -x /usr/local/bin/rtk ]; then
+  RTK=(/usr/local/bin/rtk)
+elif command -v rtk >/dev/null 2>&1; then
+  RTK=(rtk)
+else
+  RTK=()
+fi
+
+run() {
+  "${RTK[@]}" "$@"
+}
+
+repo_root="$(run git rev-parse --show-toplevel 2>/dev/null || true)"
 if [ -z "$repo_root" ]; then
   echo "This script must be run inside the git repository." >&2
   exit 1
@@ -14,7 +30,7 @@ section() {
 }
 
 is_ignored() {
-  git check-ignore -q -- "$1"
+  run git check-ignore -q -- "$1"
 }
 
 check_secret() {
@@ -38,7 +54,7 @@ check_secret() {
 }
 
 section "Tracked secret guard"
-tracked="$(git ls-files -- \
+tracked="$(run git ls-files -- \
   android/key.properties \
   'android/**/*.jks' \
   'android/**/*.keystore' \
