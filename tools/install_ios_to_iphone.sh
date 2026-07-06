@@ -3,12 +3,17 @@ set -u
 set -o pipefail
 
 CACHE_ROOT="${IOS_INSTALL_CACHE_DIR:-$HOME/Library/Caches/AttackOfTheDragon}"
-SOURCE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_SOURCE_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SOURCE_ROOT="$SCRIPT_SOURCE_ROOT"
 WORK_ROOT="${IOS_INSTALL_WORK_DIR:-$CACHE_ROOT/iOSBuild}"
 ROOT_DIR="$SOURCE_ROOT"
 APP_PATH="$WORK_ROOT/build/ios/Release-iphoneos/Runner.app"
 PACKAGE_BUNDLE_ID="${PACKAGE_BUNDLE_ID:-io.github.iogami0103.attackofthedragon}"
 DEVICE_ID="${DEVICE_ID:-}"
+INSTALL_SOURCE_MODE="${INSTALL_SOURCE_MODE:-working_tree}"
+GITHUB_INSTALL_BRANCH="${GITHUB_INSTALL_BRANCH:-main}"
+GITHUB_SOURCE_ROOT="${IOS_INSTALL_GITHUB_SOURCE_DIR:-$CACHE_ROOT/GitHubLatestSource}"
+GITHUB_INSTALL_REMOTE_URL="${GITHUB_INSTALL_REMOTE_URL:-}"
 EXIT_CODE=0
 SOURCE_FINGERPRINT=""
 STAMP_FILE=""
@@ -35,7 +40,48 @@ fail() {
   EXIT_CODE=1
 }
 
+prepare_github_latest_source() {
+  mkdir -p "$CACHE_ROOT" || return 1
+
+  if [ -z "$GITHUB_INSTALL_REMOTE_URL" ] && git -C "$SCRIPT_SOURCE_ROOT" remote get-url origin >/dev/null 2>&1; then
+    GITHUB_INSTALL_REMOTE_URL="$(git -C "$SCRIPT_SOURCE_ROOT" remote get-url origin)"
+  fi
+
+  if [ -z "$GITHUB_INSTALL_REMOTE_URL" ]; then
+    GITHUB_INSTALL_REMOTE_URL="https://github.com/iogami0103/attack-of-dragon.git"
+  fi
+
+  echo "Preparing GitHub latest source from origin/$GITHUB_INSTALL_BRANCH..."
+
+  if [ -d "$GITHUB_SOURCE_ROOT/.git" ]; then
+    git -C "$GITHUB_SOURCE_ROOT" remote set-url origin "$GITHUB_INSTALL_REMOTE_URL" || return 1
+    git -C "$GITHUB_SOURCE_ROOT" fetch --prune origin || return 1
+  else
+    rm -rf "$GITHUB_SOURCE_ROOT"
+    git clone --no-checkout "$GITHUB_INSTALL_REMOTE_URL" "$GITHUB_SOURCE_ROOT" || return 1
+    git -C "$GITHUB_SOURCE_ROOT" fetch --prune origin || return 1
+  fi
+
+  git -C "$GITHUB_SOURCE_ROOT" checkout --detach "origin/$GITHUB_INSTALL_BRANCH" || return 1
+  git -C "$GITHUB_SOURCE_ROOT" reset --hard "origin/$GITHUB_INSTALL_BRANCH" || return 1
+  git -C "$GITHUB_SOURCE_ROOT" clean -fdx || return 1
+
+  SOURCE_ROOT="$GITHUB_SOURCE_ROOT"
+  ROOT_DIR="$SOURCE_ROOT"
+}
+
 update_from_github() {
+  case "$INSTALL_SOURCE_MODE" in
+    github_latest)
+      echo "Using cached GitHub latest source. No working tree update needed."
+      return 0
+      ;;
+    local)
+      echo "Using local working tree changes. Skipping GitHub update."
+      return 0
+      ;;
+  esac
+
   if [ "${SKIP_GIT_PULL:-}" = "1" ]; then
     echo "Skipping GitHub update because SKIP_GIT_PULL is set."
     return 0
@@ -177,6 +223,23 @@ prepare_build_workspace() {
   cd "$ROOT_DIR" || return 1
 }
 
+case "$INSTALL_SOURCE_MODE" in
+  github_latest)
+    prepare_github_latest_source || {
+      echo "ERROR: Could not prepare the GitHub latest source."
+      pause_on_exit
+      exit 1
+    }
+    ;;
+  local|working_tree)
+    ;;
+  *)
+    echo "ERROR: Unknown INSTALL_SOURCE_MODE: $INSTALL_SOURCE_MODE"
+    pause_on_exit
+    exit 1
+    ;;
+esac
+
 cd "$SOURCE_ROOT" || {
   echo "ERROR: Could not enter project directory: $SOURCE_ROOT"
   pause_on_exit
@@ -218,6 +281,7 @@ fi
 echo "Project: $SOURCE_ROOT"
 echo "Build:   $WORK_ROOT"
 echo "Device:  $DEVICE_ID"
+echo "Source:  $INSTALL_SOURCE_MODE"
 echo
 echo "Keep the iPhone unlocked until the install finishes."
 echo

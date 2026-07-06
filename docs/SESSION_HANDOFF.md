@@ -38,6 +38,18 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-06 Device: Mac / AI: Codex — iPhoneインストール元選択を追加
+
+- Branch: `main`
+- PR: 未作成
+- やったこと:
+  - `tools/install_ios_to_iphone.sh` に `INSTALL_SOURCE_MODE` を追加し、ローカル作業ツリー、ローカル変更優先、GitHub最新版キャッシュの各モードを選べるようにした。
+  - macOS ダブルクリック用に「GitHub最新版」と「ローカル変更」の2種類の `.command` ラッパーを追加した。
+  - Mac で `flutter analyze` と `flutter test` は通過。
+- 次のセッションへの申し送り:
+  - この Mac には `powershell` / `pwsh` がないため、Windows専用RTKに依存する `tools/github_workflow_check.ps1 -RunFlutterChecks` は直接実行不可。Macでは同等の Flutter チェックを個別実行する。
+  - 必要なら iPhone 実機で2種類の `.command` をダブルクリックして、GitHub最新版インストールとローカル変更インストールの挙動を確認する。
+
 ## 2026-07-05 Device: Windows / AI: Codex — iOS広告提出設定とCI整合性対応
 
 - Branch: `codex/release-prep-fixes`
