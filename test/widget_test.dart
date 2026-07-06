@@ -232,6 +232,15 @@ void main() {
     );
   });
 
+  test('ios iPad portrait build opts out of multitasking resizing', () {
+    final infoPlist = File('ios/Runner/Info.plist').readAsStringSync();
+
+    expect(
+      infoPlist,
+      matches(RegExp(r'<key>UIRequiresFullScreen</key>\s*<true/>')),
+    );
+  });
+
   test('filterByPeriod applies scoreboard date ranges', () {
     final now = DateTime(2026, 7, 2, 12);
     final scores = [
