@@ -273,7 +273,15 @@ String get _scoreApiUrl {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  // iPad(マルチタスキング構成)では setPreferredOrientations の応答が返らず、
+  // await すると初回フレーム前で止まり起動画面のまま固まる。
+  // 画面固定は Info.plist / AndroidManifest 側でも指定済みなので、
+  // ここでは結果を待たずに起動を続行する。
+  unawaited(
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]).catchError((Object _) {}),
+  );
   runApp(const DragonApp());
 }
 
