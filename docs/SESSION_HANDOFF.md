@@ -288,3 +288,17 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 - Notes for next session:
   - iOS ATT dialog still needs confirmation on a real iPhone/TestFlight fresh install because this Windows session cannot build or run iOS.
   - Android does not show an iOS-style ATT runtime prompt; Play Console advertising ID declaration should match the app's Google Mobile Ads usage.
+
+## 2026-07-11 Device: Windows / AI: Codex - Apply volume slider changes immediately
+
+- Branch: `main`
+- PR: not created
+- Done:
+  - Updated settings saving so `_DragonShellState._saveSettings` applies `_settings`, `GameAudio.applySettings`, and ad-removal state before waiting on `SharedPreferences`.
+  - Updated `SettingsScreen._commit` and back navigation to call `widget.audio.applySettings(...)` directly, so slider changes reach the active `GameAudio` instance immediately.
+  - Updated loop SFX handling to remember each loop's `volumeScale` and reapply volume to currently wanted loop players when settings change.
+  - Removed the attempted widget test because this environment/user confirmed that path hangs.
+  - Ran `git diff --check`; it passed.
+- Notes for next session:
+  - Rebased the change onto the current `origin/main` (five remote commits) without conflicts before pushing.
+  - Flutter formatting and tests were intentionally not run: this environment's test path repeatedly hangs. `git diff --check` passed; use a known-good local Flutter shell for full format/analyze/test verification.

@@ -1589,12 +1589,12 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
   }
 
   Future<void> _saveSettings(AppSettings settings) async {
-    final prefs = await SharedPreferences.getInstance();
-    await settings.save(prefs);
     if (!mounted) return;
     setState(() => _settings = settings);
     _audio.applySettings(settings);
     _adMob.setAdsRemoved(settings.adsRemoved);
+    final prefs = await SharedPreferences.getInstance();
+    await settings.save(prefs);
   }
 
   Future<void> _unlockAdRemoval() async {
@@ -1880,8 +1880,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _commit(AppSettings settings) {
+    final settingsForSave = _settingsForSave(settings);
     setState(() => _draft = settings);
-    widget.onChanged(_settingsForSave(settings));
+    widget.audio.applySettings(settingsForSave);
+    widget.onChanged(settingsForSave);
   }
 
   AppSettings _settingsForSave(AppSettings settings) {
@@ -1895,7 +1897,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _backToTitle() {
-    widget.onChanged(_settingsForSave(_draft));
+    final settingsForSave = _settingsForSave(_draft);
+    widget.audio.applySettings(settingsForSave);
+    widget.onChanged(settingsForSave);
     widget.onBack();
   }
 
@@ -5485,6 +5489,24 @@ class GameAudio {
 
   void applySettings(AppSettings settings) {
     _settings = settings;
+    for (final loop in _loopSfx.values) {
+      if (!loop.wanted) continue;
+      final volume = (_settings.volume * loop.volumeScale)
+          .clamp(0.0, 1.0)
+          .toDouble();
+      unawaited(
+        loop.enqueue(() async {
+          try {
+            await loop.ready;
+            if (!_disposed && loop.wanted) {
+              await loop.player.setVolume(volume);
+            }
+          } catch (error) {
+            _logAudioError('set loop volume', error);
+          }
+        }),
+      );
+    }
     unawaited(
       _enqueueMusic(() async {
         if (_disposed) return;
@@ -5792,6 +5814,7 @@ class GameAudio {
     if (volume <= 0) return stopLoopSfx(file);
     final loop = _ensureLoopSfx(file);
     loop.wanted = true;
+    loop.volumeScale = volumeScale;
     return loop.enqueue(() async {
       try {
         await loop.ready;
@@ -5947,6 +5970,7 @@ class _LoopSfx {
   // 直近の要求が「再生中であるべき」かどうか。start/stop の非同期処理が
   // 交錯しても最後の要求が勝つよう、キュー内の各処理がこれを確認する。
   bool wanted = false;
+  double volumeScale = 1;
   Future<void> _queue = Future<void>.value();
 
   Future<void> enqueue(Future<void> Function() operation) {
