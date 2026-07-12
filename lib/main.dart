@@ -68,14 +68,13 @@ const _removeAdsProductId = String.fromEnvironment(
   'REMOVE_ADS_PRODUCT_ID',
   defaultValue: 'remove_ads',
 );
-const _removeAdsReferencePriceLabel = '¥300';
 const _googleClientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
 const _googleServerClientId = String.fromEnvironment(
   'GOOGLE_SERVER_CLIENT_ID',
   defaultValue:
       '472691784297-l323hbj6cm13ulsn8ul8cvvge956vedf.apps.googleusercontent.com',
 );
-const _gameVersion = '1.0.0';
+const gameVersion = '1.0.1';
 const _gameBgmIntroFile = 'game_bgm_intro.ogg';
 const _gameBgmLoopFile = 'game_bgm_loop.ogg';
 // 炎SFXは単発音(82ms)を発射間隔0.14sで敷き詰めた2.24sのループ音源。
@@ -123,8 +122,7 @@ class DragonStrings {
   String get volume => isJapanese ? '音量' : 'Volume';
   String get logout => isJapanese ? 'ログアウト' : 'Log Out';
   String get loggedOut => isJapanese ? 'ログアウトしました。' : 'Logged out.';
-  String get deleteAccount =>
-      isJapanese ? 'アカウントを削除' : 'Delete Account';
+  String get deleteAccount => isJapanese ? 'アカウントを削除' : 'Delete Account';
   String get deleteAccountTitle =>
       isJapanese ? 'アカウントを削除しますか？' : 'Delete account?';
   String get deleteAccountDescription => isJapanese
@@ -231,6 +229,8 @@ class DragonStrings {
   String get pause => isJapanese ? '一時停止' : 'Pause';
   String get resume => isJapanese ? '再開' : 'Resume';
   String get tapToStart => isJapanese ? 'タップしてスタート' : 'Tap to Start';
+  String get gameAssetsLoadFailed =>
+      isJapanese ? 'ゲーム画像を読み込めませんでした。' : 'Could not load the game images.';
   String get newRecord => isJapanese ? '新記録!' : 'New Record!';
   String get best => isJapanese ? 'ベスト' : 'Best';
   String get defeated => isJapanese ? '撃破' : 'Defeated';
@@ -482,6 +482,7 @@ class AdMobService {
   bool _interstitialLoading = false;
   bool _interstitialShowing = false;
   bool _adsRemoved = false;
+  int _interstitialLoadGeneration = 0;
 
   static bool get supported {
     if (!_adMobEnabled || kIsWeb) return false;
@@ -619,14 +620,20 @@ class AdMobService {
     if (adUnitId.isEmpty) return;
 
     _interstitialLoading = true;
-    unawaited(_loadInterstitialAfterInitialization(adUnitId));
+    final generation = ++_interstitialLoadGeneration;
+    unawaited(_loadInterstitialAfterInitialization(adUnitId, generation));
   }
 
-  Future<void> _loadInterstitialAfterInitialization(String adUnitId) async {
+  Future<void> _loadInterstitialAfterInitialization(
+    String adUnitId,
+    int generation,
+  ) async {
     try {
       await _ensureInitialized();
-      if (!canShowAds) {
-        _interstitialLoading = false;
+      if (!canShowAds || generation != _interstitialLoadGeneration) {
+        if (generation == _interstitialLoadGeneration) {
+          _interstitialLoading = false;
+        }
         return;
       }
       await InterstitialAd.load(
@@ -634,20 +641,29 @@ class AdMobService {
         request: const AdRequest(),
         adLoadCallback: InterstitialAdLoadCallback(
           onAdLoaded: (ad) {
+            if (!canShowAds || generation != _interstitialLoadGeneration) {
+              ad.dispose();
+              return;
+            }
             _interstitialLoading = false;
             _interstitialAd = ad;
           },
           onAdFailedToLoad: (_) {
-            _interstitialLoading = false;
+            if (generation == _interstitialLoadGeneration) {
+              _interstitialLoading = false;
+            }
           },
         ),
       );
     } catch (_) {
-      _interstitialLoading = false;
+      if (generation == _interstitialLoadGeneration) {
+        _interstitialLoading = false;
+      }
     }
   }
 
   void dispose() {
+    _interstitialLoadGeneration++;
     _interstitialAd?.dispose();
     _interstitialAd = null;
     _interstitialLoading = false;
@@ -851,7 +867,7 @@ class AdRemovalPurchaseService extends ChangeNotifier {
   bool get busy => _busy;
   bool get storeAvailable => _storeAvailable;
   String get productId => _removeAdsProductId;
-  String get priceLabel => _product?.price ?? _removeAdsReferencePriceLabel;
+  String? get priceLabel => _product?.price;
 
   bool get canBuy {
     return supported &&
@@ -1030,8 +1046,8 @@ class AdRemovalPurchaseService extends ChangeNotifier {
 
   Future<void> _unlockEntitlement() async {
     if (_owned) return;
-    _owned = true;
     await onEntitlementUnlocked?.call();
+    _owned = true;
   }
 
   ProductDetails? _productById(List<ProductDetails> products, String id) {
@@ -1498,6 +1514,9 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
   List<ScoreEntry>? _onlineScores;
   bool _scoreboardOverGame = false;
   bool _loaded = false;
+  bool _settingsAccountBusy = false;
+  Future<void> _settingsSaveQueue = Future<void>.value();
+  Future<GameImages>? _gameImages;
 
   @override
   void initState() {
@@ -1513,7 +1532,7 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
     _adRemoval
       ..onEntitlementUnlocked = _unlockAdRemoval
       ..addListener(_handleAdRemovalChanged);
-    _load();
+    unawaited(_load());
   }
 
   @override
@@ -1526,6 +1545,14 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
       ..dispose();
     _adMob.dispose();
     _audio.dispose();
+    final gameImages = _gameImages;
+    if (gameImages != null) {
+      unawaited(
+        gameImages
+            .then<void>((images) => images.dispose())
+            .catchError((Object _) {}),
+      );
+    }
     super.dispose();
   }
 
@@ -1544,18 +1571,7 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
   }
 
   void _setAudioActive(bool active) {
-    if (!active && _keepsAudioActiveForDesktop) return;
     unawaited(_audio.setAppActive(active));
-  }
-
-  bool get _keepsAudioActiveForDesktop {
-    if (kIsWeb) return false;
-    return switch (defaultTargetPlatform) {
-      TargetPlatform.windows ||
-      TargetPlatform.macOS ||
-      TargetPlatform.linux => true,
-      _ => false,
-    };
   }
 
   Future<void> _handleAudioLifecycleCall(MethodCall call) async {
@@ -1571,14 +1587,28 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
   }
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedPlayerName = prefs.getString('playerName');
-    final storedPlayerId = prefs.getString('playerId');
-    final settings = AppSettings.fromPrefs(prefs);
-    final scores = ScoreStore.loadLocalScores(prefs);
-    if (storedPlayerName != settings.playerName ||
-        storedPlayerId != settings.playerId) {
-      await settings.save(prefs);
+    var settings = AppSettings.defaults();
+    var scores = const <ScoreEntry>[];
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedPlayerName = prefs.getString('playerName');
+      final storedPlayerId = prefs.getString('playerId');
+      settings = AppSettings.fromPrefs(prefs);
+      scores = ScoreStore.loadLocalScores(prefs);
+      if (storedPlayerName != settings.playerName ||
+          storedPlayerId != settings.playerId) {
+        try {
+          await settings.save(prefs, persistAdsRemoved: false);
+        } catch (error) {
+          if (!kReleaseMode) {
+            debugPrint('Settings migration save failed: $error');
+          }
+        }
+      }
+    } catch (error) {
+      if (!kReleaseMode) {
+        debugPrint('Settings load failed; using defaults: $error');
+      }
     }
     if (!mounted) return;
     setState(() {
@@ -1589,7 +1619,13 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
     _audio.applySettings(settings);
     _adMob.setAdsRemoved(settings.adsRemoved);
     unawaited(_adRemoval.load(owned: settings.adsRemoved));
-    await repairJustAudioAssetCache();
+    try {
+      await repairJustAudioAssetCache();
+    } catch (error) {
+      if (!kReleaseMode) {
+        debugPrint('Audio cache repair failed: $error');
+      }
+    }
     if (!mounted) return;
     unawaited(_audio.preloadSfx(_preloadedSfxFiles));
     unawaited(_audio.preloadLoopSfx(_preloadedLoopSfxFiles));
@@ -1603,24 +1639,51 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
 
   Future<void> _saveSettings(AppSettings settings) async {
     if (!mounted) return;
-    setState(() => _settings = settings);
-    _audio.applySettings(settings);
-    _adMob.setAdsRemoved(settings.adsRemoved);
-    final prefs = await SharedPreferences.getInstance();
-    await settings.save(prefs);
+    final nextSettings = settings.copyWith(
+      // A stale settings-screen callback must never revoke a purchased
+      // entitlement while asynchronous preference writes are still queued.
+      adsRemoved: settings.adsRemoved || _settings.adsRemoved,
+    );
+    setState(() => _settings = nextSettings);
+    _audio.applySettings(nextSettings);
+    _adMob.setAdsRemoved(nextSettings.adsRemoved);
+    try {
+      await _persistSettings(nextSettings);
+    } catch (error) {
+      if (!kReleaseMode) {
+        debugPrint('Settings save failed: $error');
+      }
+    }
   }
 
   Future<void> _unlockAdRemoval() async {
     if (_settings.adsRemoved) {
       _adMob.setAdsRemoved(true);
+      // A previous storage attempt may have failed. Do not acknowledge the
+      // store purchase until the entitlement is durably written.
+      await _persistSettings(_settings, persistAdsRemoved: true);
       return;
     }
     final nextSettings = _settings.copyWith(adsRemoved: true);
-    final prefs = await SharedPreferences.getInstance();
-    await nextSettings.save(prefs);
-    if (!mounted) return;
-    setState(() => _settings = nextSettings);
+    await _persistSettings(nextSettings, persistAdsRemoved: true);
+    if (mounted) {
+      setState(() => _settings = nextSettings);
+    } else {
+      _settings = nextSettings;
+    }
     _adMob.setAdsRemoved(true);
+  }
+
+  Future<void> _persistSettings(
+    AppSettings settings, {
+    bool persistAdsRemoved = false,
+  }) {
+    final save = _settingsSaveQueue.catchError((Object _) {}).then((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      await settings.save(prefs, persistAdsRemoved: persistAdsRemoved);
+    });
+    _settingsSaveQueue = save;
+    return save;
   }
 
   void _handleAdRemovalChanged() {
@@ -1631,15 +1694,22 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
     final prefs = await SharedPreferences.getInstance();
     final scores = await ScoreStore.addLocalScore(prefs, entry);
     if (mounted) setState(() => _localScores = scores);
-    if (_scoreApiUrl.isNotEmpty) {
-      unawaited(_submitScore(entry));
-    }
   }
 
   Future<void> _submitScore(ScoreEntry entry) async {
     final onlineScores = await ScoreStore.submitScore(entry);
     if (!mounted || onlineScores == null) return;
     setState(() => _onlineScores = onlineScores);
+  }
+
+  Future<void> _clearLocalScores() async {
+    if (mounted) {
+      setState(() {
+        _localScores = const [];
+        _onlineScores = null;
+      });
+    }
+    await ScoreStore.clearLocalScores();
   }
 
   void _show(ShellScreen screen) {
@@ -1658,6 +1728,30 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
 
   void _hideResultScoreboard() {
     setState(() => _scoreboardOverGame = false);
+  }
+
+  void _handleSystemBack(bool didPop, Object? result) {
+    if (didPop) return;
+    if (_screen == ShellScreen.settings && _settingsAccountBusy) return;
+    if (_scoreboardOverGame) {
+      _hideResultScoreboard();
+      return;
+    }
+    if (_screen != ShellScreen.title) {
+      _show(ShellScreen.title);
+    }
+  }
+
+  Future<GameImages> _loadGameImages() {
+    final cached = _gameImages;
+    if (cached != null) return cached;
+    late final Future<GameImages> load;
+    load = GameImages.load().catchError((Object error, StackTrace stackTrace) {
+      if (identical(_gameImages, load)) _gameImages = null;
+      Error.throwWithStackTrace(error, stackTrace);
+    });
+    _gameImages = load;
+    return load;
   }
 
   int get _bestScore {
@@ -1695,17 +1789,27 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
         audio: _audio,
         adRemoval: _adRemoval,
         onChanged: _saveSettings,
+        onClearLocalScores: _clearLocalScores,
+        onAccountBusyChanged: (busy) {
+          if (mounted && busy != _settingsAccountBusy) {
+            setState(() => _settingsAccountBusy = busy);
+          }
+        },
         onBack: () => _show(ShellScreen.title),
       ),
       ShellScreen.scoreboard => _buildScoreboardScreen(
         onBack: () => _show(ShellScreen.title),
       ),
     };
-    return Column(
-      children: [
-        Expanded(child: screen),
-        AdMobBanner(adMob: _adMob),
-      ],
+    return PopScope(
+      canPop: _screen == ShellScreen.title && !_scoreboardOverGame,
+      onPopInvokedWithResult: _handleSystemBack,
+      child: Column(
+        children: [
+          Expanded(child: screen),
+          AdMobBanner(adMob: _adMob),
+        ],
+      ),
     );
   }
 
@@ -1717,8 +1821,10 @@ class _DragonShellState extends State<DragonShell> with WidgetsBindingObserver {
       adMob: _adMob,
       onRankedRunStart: () => ScoreStore.startRankedRun(_settings),
       onScore: _recordScore,
+      onOnlineScore: _submitScore,
       onTitle: () => _show(ShellScreen.title),
       onScoreboard: _showResultScoreboard,
+      images: _loadGameImages(),
     );
   }
 
@@ -1850,6 +1956,8 @@ class SettingsScreen extends StatefulWidget {
     required this.audio,
     required this.adRemoval,
     required this.onChanged,
+    required this.onClearLocalScores,
+    required this.onAccountBusyChanged,
     required this.onBack,
     super.key,
   });
@@ -1858,6 +1966,8 @@ class SettingsScreen extends StatefulWidget {
   final GameAudio audio;
   final AdRemovalPurchaseService adRemoval;
   final ValueChanged<AppSettings> onChanged;
+  final AsyncCallback onClearLocalScores;
+  final ValueChanged<bool> onAccountBusyChanged;
   final VoidCallback onBack;
 
   @override
@@ -1918,6 +2028,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   bool get _accountBusy => _authenticatingProvider != null;
 
+  void _setAccountBusy(AccountProvider? provider) {
+    if (!mounted) return;
+    setState(() => _authenticatingProvider = provider);
+    widget.onAccountBusyChanged(provider != null);
+  }
+
   AccountProvider? get _accountProviderForPlatform {
     return switch (defaultTargetPlatform) {
       TargetPlatform.android => AccountProvider.google,
@@ -1945,7 +2061,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final strings = DragonStrings.of(context);
     final settings = _settingsForSave(_draft);
     _commit(settings);
-    setState(() => _authenticatingProvider = provider);
+    _setAccountBusy(provider);
     try {
       final credential = switch (provider) {
         AccountProvider.google => await AccountSignIn.signInWithGoogle(),
@@ -1972,7 +2088,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _logAccountAuthError(provider, error, stackTrace);
       _showAccountMessage(_accountAuthErrorMessage(strings, provider, error));
     } finally {
-      if (mounted) setState(() => _authenticatingProvider = null);
+      _setAccountBusy(null);
     }
   }
 
@@ -2044,7 +2160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _logout(AccountProvider provider) async {
-    setState(() => _authenticatingProvider = provider);
+    _setAccountBusy(provider);
     try {
       await AccountSignIn.signOut(provider);
     } catch (_) {
@@ -2060,7 +2176,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     _showAccountMessage(DragonStrings.of(context).loggedOut);
-    setState(() => _authenticatingProvider = null);
+    _setAccountBusy(null);
   }
 
   Future<void> _requestAccountDeletion(AccountProvider provider) async {
@@ -2084,7 +2200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    setState(() => _authenticatingProvider = provider);
+    _setAccountBusy(provider);
     try {
       // Require a current provider credential before deleting account data.
       final credential = switch (provider) {
@@ -2095,26 +2211,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
         settings: _settingsForSave(_draft),
         credential: credential,
       );
-      try {
-        await AccountSignIn.signOut(provider);
-      } catch (_) {
-        // The server deletion succeeded, so complete local cleanup regardless.
-      }
-      await ScoreStore.clearLocalScores();
-      if (!mounted) return;
-      _commit(
-        _draft.copyWith(
-          playerId: AppSettings.randomPlayerId(),
-          clearAccountProvider: true,
-        ),
-      );
-      _showAccountMessage(strings.accountDeleted);
     } catch (error, stackTrace) {
       _logAccountAuthError(provider, error, stackTrace);
       _showAccountMessage(strings.accountDeletionFailed);
-    } finally {
-      if (mounted) setState(() => _authenticatingProvider = null);
+      _setAccountBusy(null);
+      return;
     }
+
+    // Remote deletion is authoritative. Local sign-out or preference cleanup
+    // must not leave the UI linked to an account that no longer exists.
+    try {
+      await AccountSignIn.signOut(provider);
+    } catch (_) {
+      // Continue with local cleanup after a successful server deletion.
+    }
+    final nextSettings = _draft.copyWith(
+      playerId: AppSettings.randomPlayerId(),
+      clearAccountProvider: true,
+    );
+    if (mounted) {
+      _commit(nextSettings);
+    } else {
+      widget.onChanged(_settingsForSave(nextSettings));
+    }
+    try {
+      await widget.onClearLocalScores();
+    } catch (error, stackTrace) {
+      if (!kReleaseMode) {
+        debugPrint('Local account cleanup failed: $error');
+        debugPrint('$stackTrace');
+      }
+    }
+    if (!mounted) return;
+    _showAccountMessage(strings.accountDeleted);
+    _setAccountBusy(null);
   }
 
   void _showAccountMessage(String message) {
@@ -2283,7 +2413,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 icon: Icons.arrow_back_rounded,
                                 label: strings.backToTitle,
                                 tone: _FantasyButtonTone.secondary,
-                                onPressed: _backToTitle,
+                                onPressed: _accountBusy ? null : _backToTitle,
                               ),
                             ],
                           ),
@@ -2318,6 +2448,7 @@ class _AdRemovalSection extends StatelessWidget {
       animation: adRemoval,
       builder: (context, _) {
         final owned = adsRemoved || adRemoval.owned;
+        final price = adRemoval.priceLabel;
         final message = owned
             ? strings.adRemovalOwned
             : adRemoval.message(strings);
@@ -2342,13 +2473,14 @@ class _AdRemovalSection extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(
-                  adRemoval.priceLabel,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: _UiColors.ember,
+                if (price != null)
+                  Text(
+                    price,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: _UiColors.ember,
+                    ),
                   ),
-                ),
               ],
             ),
             if (message != null) ...[
@@ -2367,7 +2499,9 @@ class _AdRemovalSection extends StatelessWidget {
               icon: owned ? Icons.check_circle_rounded : Icons.block_rounded,
               label: owned
                   ? strings.adRemovalOwned
-                  : strings.adRemovalBuy(adRemoval.priceLabel),
+                  : price == null
+                  ? strings.adRemovalTitle
+                  : strings.adRemovalBuy(price),
               tone: _FantasyButtonTone.quiet,
               height: 46,
               busy: !owned && (adRemoval.loading || adRemoval.busy),
@@ -3131,6 +3265,7 @@ class GameScreen extends StatefulWidget {
     required this.adMob,
     required this.onRankedRunStart,
     required this.onScore,
+    required this.onOnlineScore,
     required this.onTitle,
     required this.onScoreboard,
     this.images,
@@ -3143,6 +3278,7 @@ class GameScreen extends StatefulWidget {
   final AdMobService adMob;
   final Future<String?> Function() onRankedRunStart;
   final Future<void> Function(ScoreEntry score) onScore;
+  final Future<void> Function(ScoreEntry score) onOnlineScore;
   final VoidCallback onTitle;
   final VoidCallback onScoreboard;
   final Future<GameImages>? images;
@@ -3156,7 +3292,7 @@ enum RunState { ready, playing, paused, gameOver }
 enum EnemyKind { bat, bird, slime, mage, gargoyle }
 
 class _GameScreenState extends State<GameScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const _dragonFrameSize = Size(256, 192);
   static const _enemyCellSize = Size(256, 256);
   static const double _fireSpreadAngle = 0.20;
@@ -3170,6 +3306,7 @@ class _GameScreenState extends State<GameScreen>
   final math.Random _rng = math.Random();
   late final Ticker _ticker;
   late final Future<GameImages> _images;
+  late final bool _ownsImages;
   Duration? _lastTick;
   Size _worldSize = Size.zero;
   RunState _state = RunState.ready;
@@ -3188,6 +3325,7 @@ class _GameScreenState extends State<GameScreen>
   bool _isNewRecord = false;
   int _runId = 0;
   String? _runToken;
+  Future<String?>? _runTokenRequest;
   int _lastDangerPattern = -1;
   final List<EnemyModel> _enemies = [];
   final List<ProjectileModel> _fireballs = [];
@@ -3197,15 +3335,38 @@ class _GameScreenState extends State<GameScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _ownsImages = widget.images == null;
     _images = widget.images ?? GameImages.load();
     _ticker = createTicker(_tick)..start();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _stopFireSfx();
     _ticker.dispose();
+    if (_ownsImages) {
+      unawaited(
+        _images
+            .then<void>((images) => images.dispose())
+            .catchError((Object _) {}),
+      );
+    }
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_state != RunState.playing ||
+        (state != AppLifecycleState.inactive &&
+            state != AppLifecycleState.hidden &&
+            state != AppLifecycleState.paused &&
+            state != AppLifecycleState.detached)) {
+      return;
+    }
+    _stopFireSfx();
+    if (mounted) setState(() => _state = RunState.paused);
   }
 
   void _tick(Duration elapsed) {
@@ -3238,6 +3399,7 @@ class _GameScreenState extends State<GameScreen>
       _isNewRecord = false;
       _runId += 1;
       _runToken = null;
+      _runTokenRequest = null;
       _lastDangerPattern = -1;
       _enemies.clear();
       _fireballs.clear();
@@ -3263,15 +3425,26 @@ class _GameScreenState extends State<GameScreen>
         _scoreRecorded = false;
         _velocityY = liftVelocity;
       });
-      unawaited(_startRankedRun(runId));
+      final tokenRequest = Future<String?>.sync(widget.onRankedRunStart);
+      _runTokenRequest = tokenRequest;
+      unawaited(_startRankedRun(runId, tokenRequest));
     } else {
       _velocityY = liftVelocity;
     }
   }
 
-  Future<void> _startRankedRun(int runId) async {
-    final token = await widget.onRankedRunStart();
-    if (!mounted || runId != _runId || _state == RunState.ready) return;
+  Future<void> _startRankedRun(int runId, Future<String?> tokenRequest) async {
+    String? token;
+    try {
+      token = await tokenRequest;
+    } catch (_) {
+      return;
+    }
+    if (!mounted ||
+        runId != _runId ||
+        (_state != RunState.playing && _state != RunState.paused)) {
+      return;
+    }
     _runToken = token;
   }
 
@@ -3523,6 +3696,7 @@ class _GameScreenState extends State<GameScreen>
     final dragon = _dragonRect;
     final playerRadius = math.min(dragon.width, dragon.height) * 0.48;
     for (final enemy in _enemies) {
+      if (enemy.dead) continue;
       final dx = enemy.x - dragon.center.dx;
       final dy = enemy.y - dragon.center.dy;
       final hitDistance = playerRadius + enemy.radius * 0.9;
@@ -3551,19 +3725,42 @@ class _GameScreenState extends State<GameScreen>
     _isNewRecord = _score.round() > widget.bestScore;
     if (!_scoreRecorded) {
       _scoreRecorded = true;
-      unawaited(
-        widget.onScore(
-          ScoreEntry(
-            playerId: widget.settings.playerId,
-            name: AppSettings.scoreName(widget.settings.playerName),
-            score: _score.round(),
-            kills: _kills,
-            date: DateTime.now().toUtc(),
-            version: _gameVersion,
-            runToken: _runToken,
-          ),
-        ),
+      final entry = ScoreEntry(
+        playerId: widget.settings.playerId,
+        name: AppSettings.scoreName(widget.settings.playerName),
+        score: _score.round(),
+        kills: _kills,
+        date: DateTime.now().toUtc(),
+        version: gameVersion,
       );
+      unawaited(
+        widget.onScore(entry).catchError((Object error) {
+          if (!kReleaseMode) {
+            debugPrint('Local score save failed: $error');
+          }
+        }),
+      );
+
+      final tokenRequest = _runToken == null
+          ? _runTokenRequest
+          : Future<String?>.value(_runToken);
+      if (tokenRequest != null) {
+        unawaited(_submitOnlineScore(entry, tokenRequest));
+      }
+    }
+  }
+
+  Future<void> _submitOnlineScore(
+    ScoreEntry entry,
+    Future<String?> tokenRequest,
+  ) async {
+    try {
+      final token = await tokenRequest;
+      if (token == null || token.isEmpty) return;
+      await widget.onOnlineScore(entry.withRunToken(token));
+    } catch (_) {
+      // Local score recording must remain successful if online submission or
+      // token acquisition fails.
     }
   }
 
@@ -3791,6 +3988,33 @@ class _GameScreenState extends State<GameScreen>
     return FutureBuilder<GameImages>(
       future: _images,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: SafeArea(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        strings.gameAssetsLoadFailed,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      _FantasyButton(
+                        icon: Icons.arrow_back_rounded,
+                        label: strings.backToTitle,
+                        tone: _FantasyButtonTone.secondary,
+                        onPressed: widget.onTitle,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
         if (!snapshot.hasData) {
           return const Scaffold(
             body: SafeArea(
@@ -4707,17 +4931,37 @@ class GameImages {
   final ui.Image enemyAtlas;
 
   static Future<GameImages> load() async {
-    final sky = await _loadImage('assets/images/sky.png');
-    final dragon = await _loadImage('assets/images/dragon_atlas.png');
-    final enemy = await _loadImage('assets/images/enemy_atlas_flap.png');
-    return GameImages(sky: sky, dragonAtlas: dragon, enemyAtlas: enemy);
+    ui.Image? sky;
+    ui.Image? dragon;
+    ui.Image? enemy;
+    try {
+      sky = await _loadImage('assets/images/sky.png');
+      dragon = await _loadImage('assets/images/dragon_atlas.png');
+      enemy = await _loadImage('assets/images/enemy_atlas_flap.png');
+      return GameImages(sky: sky, dragonAtlas: dragon, enemyAtlas: enemy);
+    } catch (_) {
+      sky?.dispose();
+      dragon?.dispose();
+      enemy?.dispose();
+      rethrow;
+    }
   }
 
   static Future<ui.Image> _loadImage(String asset) async {
     final data = await rootBundle.load(asset);
     final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-    final frame = await codec.getNextFrame();
-    return frame.image;
+    try {
+      final frame = await codec.getNextFrame();
+      return frame.image;
+    } finally {
+      codec.dispose();
+    }
+  }
+
+  void dispose() {
+    sky.dispose();
+    dragonAtlas.dispose();
+    enemyAtlas.dispose();
   }
 }
 
@@ -4975,16 +5219,47 @@ class AppSettings {
     return clean;
   }
 
-  Future<void> save(SharedPreferences prefs) async {
-    await prefs.setString('playerId', cleanPlayerId(playerId));
-    await prefs.setString('playerName', cleanName(playerName));
-    await prefs.setDouble('volume', volume);
-    await prefs.setBool('adsRemoved', adsRemoved);
+  Future<void> save(
+    SharedPreferences prefs, {
+    required bool persistAdsRemoved,
+  }) async {
+    await _requirePreferenceWrite(
+      prefs.setString('playerId', cleanPlayerId(playerId)),
+      'playerId',
+    );
+    await _requirePreferenceWrite(
+      prefs.setString('playerName', cleanName(playerName)),
+      'playerName',
+    );
+    await _requirePreferenceWrite(prefs.setDouble('volume', volume), 'volume');
+    // Store entitlements monotonically. Ordinary name/volume writes must not
+    // overwrite a purchase that completed while they were queued.
+    if (persistAdsRemoved && adsRemoved) {
+      await _requirePreferenceWrite(
+        prefs.setBool('adsRemoved', true),
+        'adsRemoved',
+      );
+    }
     final provider = accountProvider;
     if (provider == null) {
-      await prefs.remove('accountProvider');
+      await _requirePreferenceWrite(
+        prefs.remove('accountProvider'),
+        'accountProvider',
+      );
     } else {
-      await prefs.setString('accountProvider', provider.apiValue);
+      await _requirePreferenceWrite(
+        prefs.setString('accountProvider', provider.apiValue),
+        'accountProvider',
+      );
+    }
+  }
+
+  static Future<void> _requirePreferenceWrite(
+    Future<bool> operation,
+    String key,
+  ) async {
+    if (!await operation) {
+      throw StateError('shared_preferences_write_failed:$key');
     }
   }
 
@@ -5043,6 +5318,18 @@ class ScoreEntry {
     return json;
   }
 
+  ScoreEntry withRunToken(String value) {
+    return ScoreEntry(
+      playerId: playerId,
+      name: name,
+      score: score,
+      kills: kills,
+      date: date,
+      version: version,
+      runToken: value,
+    );
+  }
+
   static ScoreEntry fromJson(Map<String, dynamic> json) {
     return ScoreEntry(
       playerId: AppSettings.cleanPlayerId(
@@ -5054,7 +5341,7 @@ class ScoreEntry {
       date:
           DateTime.tryParse('${json['date'] ?? ''}') ??
           DateTime.fromMillisecondsSinceEpoch(0),
-      version: '${json['version'] ?? _gameVersion}',
+      version: '${json['version'] ?? gameVersion}',
       runToken: null,
     );
   }
@@ -5120,12 +5407,10 @@ class AuthenticatedPlayer {
   final String name;
 
   static AuthenticatedPlayer fromJson(Map<String, dynamic> json) {
-    final provider =
-        AccountProvider.fromApiValue('${json['provider'] ?? ''}') ??
-        AccountProvider.google;
+    final provider = AccountProvider.fromApiValue('${json['provider'] ?? ''}');
     final playerId = AppSettings.cleanPlayerId('${json['playerId'] ?? ''}');
     final name = AppSettings.scoreName('${json['name'] ?? ''}');
-    if (playerId.isEmpty) {
+    if (provider == null || playerId.isEmpty) {
       throw const FormatException('invalid_authenticated_player_response');
     }
     return AuthenticatedPlayer(
@@ -5222,6 +5507,14 @@ class AccountSignIn {
 class ScoreStore {
   static const int maxLeaderboardEntries = 10000;
 
+  static int compareScores(ScoreEntry a, ScoreEntry b) {
+    final byScore = b.score.compareTo(a.score);
+    if (byScore != 0) return byScore;
+    final byDate = a.date.compareTo(b.date);
+    if (byDate != 0) return byDate;
+    return a.playerId.compareTo(b.playerId);
+  }
+
   static List<ScoreEntry> loadLocalScores(SharedPreferences prefs) {
     final text = prefs.getString('scores');
     if (text == null || text.isEmpty) return const [];
@@ -5238,15 +5531,15 @@ class ScoreStore {
     SharedPreferences prefs,
     ScoreEntry entry,
   ) async {
-    final scores = [...loadLocalScores(prefs), entry]
-      ..sort((a, b) => b.score.compareTo(a.score));
+    final scores = [...loadLocalScores(prefs), entry]..sort(compareScores);
     final trimmed = scores.take(20).toList();
-    await prefs.setString(
+    final saved = await prefs.setString(
       'scores',
       jsonEncode(
         trimmed.map((score) => score.toJson(includeRunToken: false)).toList(),
       ),
     );
+    if (!saved) throw StateError('shared_preferences_write_failed:scores');
     return trimmed;
   }
 
@@ -5306,7 +5599,7 @@ class ScoreStore {
         ),
         ScoreboardPeriod.allTime => !scoreDay.isAfter(referenceDay),
       };
-    }).toList()..sort((a, b) => b.score.compareTo(a.score));
+    }).toList()..sort(compareScores);
     return filtered.take(maxLeaderboardEntries).toList();
   }
 
@@ -5393,7 +5686,7 @@ class ScoreStore {
         // Skip malformed rows so one bad score cannot break startup.
       }
     }
-    return scores..sort((a, b) => b.score.compareTo(a.score));
+    return scores..sort(compareScores);
   }
 
   static Future<String?> startRankedRun(AppSettings settings) async {
@@ -5481,7 +5774,8 @@ class ScoreStore {
 
   static Future<void> clearLocalScores() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('scores');
+    final removed = await prefs.remove('scores');
+    if (!removed) throw StateError('shared_preferences_remove_failed:scores');
   }
 
   static Future<Map<String, dynamic>> _postAction(
@@ -6039,21 +6333,26 @@ class GameAudio {
   Future<void> _haltMusicNow(
     int generation, {
     bool deactivateSession = false,
+    bool allowDisposed = false,
   }) async {
-    if (_disposed || generation != _musicGeneration) return;
+    bool isStale() {
+      return generation != _musicGeneration || (_disposed && !allowDisposed);
+    }
+
+    if (isStale()) return;
     try {
       await _music.setVolume(0);
     } catch (_) {}
-    if (_disposed || generation != _musicGeneration) return;
+    if (isStale()) return;
     try {
       await _music.pause();
     } catch (_) {}
-    if (_disposed || generation != _musicGeneration) return;
+    if (isStale()) return;
     try {
       await _music.stop();
     } catch (_) {}
     _musicSourceReady = false;
-    if (_disposed || generation != _musicGeneration) return;
+    if (isStale()) return;
     if (!deactivateSession) return;
     try {
       final session = await audio_session.AudioSession.instance;
@@ -6067,7 +6366,13 @@ class GameAudio {
     _musicGeneration++;
     unawaited(_musicStateSubscription.cancel());
     unawaited(_musicIndexSubscription.cancel());
-    unawaited(_haltMusic(deactivateSession: true).whenComplete(_music.dispose));
+    unawaited(
+      _haltMusicNow(
+        _musicGeneration,
+        deactivateSession: true,
+        allowDisposed: true,
+      ).whenComplete(_music.dispose),
+    );
     for (final pool in _sfxPools.values) {
       unawaited(pool.dispose());
     }

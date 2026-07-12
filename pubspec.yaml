@@ -78,7 +78,13 @@ flutter:
     - assets/images/enemy_atlas_flap.png
     - assets/images/sky.png
     - assets/images/title_logo.png
-    - assets/audio/
+    - assets/audio/game_bgm_intro.ogg
+    - assets/audio/game_bgm_intro.flac
+    - assets/audio/game_bgm_loop.ogg
+    - assets/audio/game_bgm_loop.flac
+    - assets/audio/dragon_fire_flame_loop.wav
+    - assets/audio/enemy_explosion_ultimate_snap_boom_007.ogg
+    - assets/audio/enemy_explosion_ultimate_snap_boom_007.wav
     - assets/data/leaderboard.json
 
   # An image asset can refer to one or more resolution-specific "variants", see

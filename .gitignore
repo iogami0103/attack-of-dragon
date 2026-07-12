@@ -61,6 +61,8 @@ google-services.json
 
 # Project generated reports/caches
 ui_report_images/
+.codex-remote-attachments/
+artifacts/
 __pycache__/
 *.pyc
 

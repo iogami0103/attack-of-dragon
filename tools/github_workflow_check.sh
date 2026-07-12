@@ -158,6 +158,10 @@ for target in "${ignore_targets[@]}"; do
   fi
 done
 
+section "Worker checks"
+run node --check server/score-submit-worker/worker.js
+run node --test server/score-submit-worker/worker.test.mjs
+
 if [ "$run_flutter_checks" -eq 1 ]; then
   section "Flutter checks"
   run flutter analyze

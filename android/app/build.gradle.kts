@@ -20,6 +20,15 @@ val hasReleaseKeystore = listOf(
     "keyPassword",
 ).all { key -> !keystoreProperties.getProperty(key).isNullOrBlank() }
 
+val releaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.contains("Release", ignoreCase = true)
+}
+if (releaseBuildRequested && !hasReleaseKeystore) {
+    throw GradleException(
+        "Release signing is not configured. Restore android/key.properties and the upload keystore.",
+    )
+}
+
 android {
     namespace = "io.github.iogami0103.attackofthedragon"
     compileSdk = flutter.compileSdkVersion
@@ -65,7 +74,7 @@ android {
             signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                null
             }
         }
     }

@@ -51,3 +51,6 @@ jobs:
 
       - name: Check Worker syntax
         run: node --check server/score-submit-worker/worker.js
+
+      - name: Test Worker safeguards
+        run: node --test server/score-submit-worker/worker.test.mjs

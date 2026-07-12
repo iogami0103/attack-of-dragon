@@ -38,6 +38,22 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-12 Device: Windows / AI: Codex — 全体監査と高優先度の堅牢化
+
+- Branch: `codex/repository-wide-improvements`
+- PR: 未作成
+- やったこと:
+  - スコア投稿の遅延run token競合、同一フレームで撃破済み敵に当たる判定、スコア版数ずれ、設定保存順序、購入フラグの巻き戻り、削除後のローカルランキング残留を修正
+  - Android/system backとゲームのバックグラウンド自動pause、画像atlasの共有・codec/image解放、広告価格未取得時の固定円表示、音声dispose時のsession cleanupを改善
+  - Workerに削除tombstone migration (`0008`) と条件付きscore/best書込を追加し、削除後の遅延投稿によるデータ復活を防止。legacy playerIdの新規claim拒否、本文16KiB制限、サーバー時刻採用、run token掃除、Workerテストも追加
+  - release署名のdebug key fallbackを禁止し、iOS installerの削除対象をcache配下へ制限。実行音源だけをpackageし、誤コミット対象をignore
+  - `webview_flutter` を 4.14.1 に更新。Flutterテストを38件、Workerテストを3件へ拡充
+  - `flutter analyze`、`flutter test`、Worker syntax/test、Web release build、Android debug APK buildを通過
+- 次のセッションへの申し送り:
+  - 本番反映前にD1 migration `0008_deleted_players.sql` を適用してからWorkerをdeployし、削除と遅延投稿の実環境確認を行う。今回のWindowsセッションではdeployしていない
+  - ストア公開前の残課題は、AdMob UMP/CMP、IAP receiptのサーバー検証、公開名UGCの通報・ブロック・モデレーション（または生成名限定）、ゲスト所有証明/削除手段
+  - `tools/install_ios_to_iphone.sh` はWindowsにbashがないため、Macで `bash -n` と通常/危険overrideの動作確認を行う
+
 ## 2026-07-06 Device: Mac / AI: Codex — Mac RTK 手順を追加
 
 - Branch: `main`

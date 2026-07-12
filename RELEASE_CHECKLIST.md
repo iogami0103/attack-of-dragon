@@ -11,20 +11,23 @@
 - [x] `C:\Users\iogam\bin\rtk.exe flutter build appbundle --release`
 - [x] `C:\Users\iogam\bin\rtk.exe flutter build windows --release`
 - [x] `C:\Users\iogam\bin\rtk.exe node --check server/score-submit-worker/worker.js`
+- [x] `C:\Users\iogam\bin\rtk.exe node --test server/score-submit-worker/worker.test.mjs`
 - [ ] 現在の提出対象コミットから `artifacts/release-YYYY-MM-DD` に AAB / Web zip / Windows zip / SHA-256 を作成する。(2026-07-04成果物は英語ローカライズ、ATT、SKAdNetwork対応前のため作り直し)
 - [ ] GitHub Actions の `Flutter CI` が通っていることを確認する。(workflow追加後、push / PR で確認)
 
 ## Android
 
 - [x] 本番 `applicationId` を `io.github.iogami0103.attackofthedragon` に確定する。
-- [ ] Google Play App Signing を使うか、リリース keystore を使うかを確定する。
+- [ ] Google Play App Signing を有効化し、upload key と Play の App Signing key を別々に管理する。
 - [ ] Google Play Console で非消耗型のアプリ内商品 `remove_ads` を作成し、価格を `300 JPY` に設定する。
 - [x] `android/key.properties.example` を `android/key.properties` にコピーし、実際の keystore 情報を入れる。
 - [x] `android/key.properties` と keystore が `git status` に出ていないことを確認する。
 - [x] `android/upload-key-fingerprints.txt` の SHA-1 を Google OAuth Android クライアントへ登録する。(2026-07-04 登録済み: クライアント名 `Attack of the Dragon Android Upload`)
 - [x] `C:\Users\iogam\bin\rtk.exe powershell -ExecutionPolicy Bypass -File tools\release_check.ps1 -RequireReleaseSigning`
 - [x] Google OAuth の Android クライアントに本番 `applicationId` と SHA-1 を登録する。(2026-07-04 完了: upload 鍵 SHA-1 / `io.github.iogami0103.attackofthedragon`)
+- [ ] Play Console の App integrity から App Signing certificate の SHA-1 を取得し、Google OAuth Android クライアントへ追加して Play 配布版でログイン確認する。
 - [ ] AdMob の Android アプリ設定が本番 `applicationId` と一致していることを確認する。
+- [ ] Google UMP の同意フォームとプライバシー設定入口を実装・設定し、`canRequestAds` 後だけ広告を要求する。
 
 ## iOS
 
@@ -40,14 +43,16 @@
 
 ## Cloudflare Worker / D1
 
-- [x] 本番 D1 database に migrations を適用する。
+- [ ] 本番 D1 database に `0008_deleted_players.sql` まで migrations を適用する。
 - [x] Worker vars の `ALLOWED_ORIGIN` / `GOOGLE_CLIENT_IDS` / `APPLE_CLIENT_IDS` を本番設定にする。ランキングは Cloudflare Worker + D1 だけで完結させる。
-- [x] `C:\Users\iogam\bin\rtk.exe wrangler deploy` で本番 Worker を deploy する。
+- [ ] tombstone対応後の Worker を `C:\Users\iogam\bin\rtk.exe wrangler deploy` で本番へ反映する。
 - [x] 実機からランキング取得、run token 発行、スコア投稿、ログイン復元を確認する。(2026-07-04 Google ログイン・復元を実機確認。2026-07-05 iPhone 実機で Apple ログイン復旧を確認)
 
 ## 公開情報と権利表記
 
 - [x] アプリ側に広告削除の非消耗型 IAP `remove_ads` を実装する。
+- [ ] Google Play / App Store の購入証明をサーバー検証し、検証成功後だけ広告削除を付与する。
+- [ ] 公開プレイヤー名について、ストアのUGC要件を満たす通報・ブロック・モデレーションを実装するか、公開名を生成済み候補に限定する。
 - [x] Cloudflare Worker の `/privacy` でプライバシーポリシーを公開し、ストア提出用 URL として使えることを確認する。
 - [x] `STORE_METADATA_JA.md` にストア掲載文面と申告メモの下書きを作成する。
 - [ ] ストア説明文、スクリーンショット、アイコン、年齢レーティングを確定する。

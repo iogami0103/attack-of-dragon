@@ -1,6 +1,6 @@
 # Attack of the Dragon Privacy Policy
 
-Last updated: 2026-07-04
+Last updated: 2026-07-12
 
 Attack of the Dragon stores gameplay data only for running the game, showing rankings, restoring an account link, serving ads, and remembering whether the ad removal purchase is active.
 

@@ -5,6 +5,7 @@ const SCORE_HISTORY_RETENTION_DAYS = 35;
 const MAX_PLAYER_ID_LENGTH = 64;
 const MAX_PLAYER_NAME_LENGTH = 14;
 const RUN_TOKEN_TTL_SECONDS = 30 * 60;
+const MAX_REQUEST_BODY_BYTES = 16 * 1024;
 const GOOGLE_JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
 const APPLE_JWKS_URL = 'https://appleid.apple.com/auth/keys';
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
@@ -12,7 +13,7 @@ const APPLE_ISSUER = 'https://appleid.apple.com';
 const SUPPORT_EMAIL = 'i.ogami.0103@gmail.com';
 const PRIVACY_POLICY_TEXT = `Attack of the Dragon Privacy Policy
 
-Last updated: 2026-07-04
+Last updated: 2026-07-12
 
 Attack of the Dragon stores gameplay data only for running the game, showing rankings, restoring an account link, serving ads, and remembering whether the ad removal purchase is active.
 
@@ -44,7 +45,7 @@ Infrastructure:
 - The app does not sell personal data.
 
 Data deletion:
-- To delete a linked account and its online ranking data, use Settings > Delete Account in the app. You will be asked to confirm with the same sign-in provider before deletion.
+- To delete a linked account and its online ranking data, use Settings > Delete Account in the app. You will be asked to confirm with the same sign-in provider before deletion. This permanently deletes the account link, online ranking entry, score history, and active run tokens for that player.
 
 Third-party services:
 - Google Sign-In: https://policies.google.com/privacy
@@ -105,9 +106,15 @@ export default {
         );
       }
 
-      const body = await request.json().catch(() => {
-        throw httpError(400, 'invalid_json');
-      });
+      const declaredLength = Number(request.headers.get('content-length') || 0);
+      if (declaredLength > MAX_REQUEST_BODY_BYTES) {
+        throw httpError(413, 'request_too_large');
+      }
+      const requestText = await request.text();
+      if (new TextEncoder().encode(requestText).byteLength > MAX_REQUEST_BODY_BYTES) {
+        throw httpError(413, 'request_too_large');
+      }
+      const body = parseRequestJson(requestText);
       const action = cleanPlainText(`${body?.action || ''}`, 32);
       if (action === 'authenticateProvider') {
         const player = await authenticateProvider(body, env);
@@ -161,7 +168,7 @@ function privacyPolicyHtml() {
 </style>
 <main>
   <h1>Attack of the Dragon Privacy Policy</h1>
-  <p><strong>Last updated:</strong> 2026-07-04</p>
+  <p><strong>Last updated:</strong> 2026-07-12</p>
   <p>Attack of the Dragon stores gameplay data only for running the game, showing rankings, restoring an account link, serving ads, and remembering whether the ad removal purchase is active.</p>
 
   <h2>Data stored on this device</h2>
@@ -255,22 +262,34 @@ function supportPageHtml() {
 async function submitScore(entry, env) {
   const db = requireDb(env);
   await consumeRunToken(entry, env);
-  await db
+  // The server timestamp is authoritative for period rankings and tie breaks.
+  const storedEntry = { ...entry, date: new Date().toISOString() };
+  const inserted = await db
     .prepare(
       `INSERT INTO scores (player_id, name, score, kills, date, version)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       SELECT ?, ?, ?, ?, ?, ?
+       WHERE NOT EXISTS (
+         SELECT 1 FROM deleted_players WHERE player_id = ?
+       )`,
     )
     .bind(
-      entry.playerId,
-      entry.name,
-      entry.score,
-      entry.kills,
-      entry.date,
-      entry.version,
+      storedEntry.playerId,
+      storedEntry.name,
+      storedEntry.score,
+      storedEntry.kills,
+      storedEntry.date,
+      storedEntry.version,
+      storedEntry.playerId,
     )
     .run();
-  await upsertPlayerBest(entry, env);
-  const rank = await rankForPlayerBest(entry.playerId, env);
+  if ((inserted?.meta?.changes ?? 0) !== 1) {
+    throw httpError(410, 'player_deleted');
+  }
+  await upsertPlayerBest(storedEntry, env);
+  if (await isPlayerDeleted(storedEntry.playerId, env)) {
+    throw httpError(410, 'player_deleted');
+  }
+  const rank = await rankForPlayerBest(storedEntry.playerId, env);
 
   await pruneScoreHistory(env);
   await pruneRunTokens(env);
@@ -279,7 +298,7 @@ async function submitScore(entry, env) {
   return {
     ...leaderboard.meta,
     rank,
-    score: publicScoreEntry(entry),
+    score: publicScoreEntry(storedEntry),
     total: leaderboard.total,
     scores: leaderboard.scores,
   };
@@ -289,17 +308,28 @@ async function startRun(value, env) {
   const db = requireDb(env);
   const playerId = cleanPlayerId(`${value?.playerId || value?.player_id || ''}`);
   if (!playerId) throw httpError(400, 'invalid_player_id');
+  if (await isPlayerDeleted(playerId, env)) {
+    throw httpError(410, 'player_deleted');
+  }
+
+  await pruneRunTokens(env);
 
   const runToken = randomRunToken();
   const expiresAt = new Date(Date.now() + RUN_TOKEN_TTL_SECONDS * 1000)
     .toISOString();
-  await db
+  const inserted = await db
     .prepare(
       `INSERT INTO run_tokens (token, player_id, expires_at)
-       VALUES (?, ?, ?)`,
+       SELECT ?, ?, ?
+       WHERE NOT EXISTS (
+         SELECT 1 FROM deleted_players WHERE player_id = ?
+       )`,
     )
-    .bind(runToken, playerId, expiresAt)
+    .bind(runToken, playerId, expiresAt, playerId)
     .run();
+  if ((inserted?.meta?.changes ?? 0) !== 1) {
+    throw httpError(410, 'player_deleted');
+  }
   return { runToken, expiresAt };
 }
 
@@ -339,7 +369,6 @@ async function authenticateProvider(value, env) {
   const requestedPlayerId = cleanPlayerId(
     `${value?.playerId || value?.player_id || ''}`,
   );
-  const fallbackPlayerId = requestedPlayerId || serverGeneratedPlayerId();
   const requestedName = cleanName(`${value?.name || ''}`) || 'Dragon';
 
   const existing = await providerAccountForIdentity(
@@ -349,6 +378,9 @@ async function authenticateProvider(value, env) {
   );
 
   if (existing) {
+    if (await isPlayerDeleted(existing.player_id, env)) {
+      throw httpError(410, 'player_deleted');
+    }
     const name = await nameForPlayerId(
       existing.player_id,
       existing.name || requestedName,
@@ -360,6 +392,13 @@ async function authenticateProvider(value, env) {
       name,
     };
   }
+
+  const fallbackPlayerId = await canLinkRequestedPlayerId(
+    db,
+    requestedPlayerId,
+  )
+    ? requestedPlayerId
+    : serverGeneratedPlayerId();
 
   await db
     .prepare(
@@ -405,24 +444,55 @@ async function deleteAccount(value, env) {
     provider === 'google'
       ? await verifyGoogleIdToken(idToken, env)
       : await verifyAppleIdentityToken(idToken, env);
-  const account = await providerAccountForIdentity(db, provider, identity.subject);
-  if (!account) throw httpError(404, 'account_not_found');
-
   const requestedPlayerId = cleanPlayerId(
     `${value?.playerId || value?.player_id || ''}`,
   );
+  const account = await providerAccountForIdentity(db, provider, identity.subject);
+  if (!account) {
+    if (requestedPlayerId && (await isPlayerDeleted(requestedPlayerId, env))) {
+      return { deleted: true };
+    }
+    throw httpError(404, 'account_not_found');
+  }
+
   if (requestedPlayerId && requestedPlayerId !== account.player_id) {
     throw httpError(403, 'account_mismatch');
   }
 
   const playerId = account.player_id;
   await db.batch([
+    db
+      .prepare(
+        `INSERT INTO deleted_players (player_id, deleted_at)
+         VALUES (?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+         ON CONFLICT(player_id) DO UPDATE SET
+           deleted_at = excluded.deleted_at`,
+      )
+      .bind(playerId),
     db.prepare('DELETE FROM run_tokens WHERE player_id = ?').bind(playerId),
     db.prepare('DELETE FROM scores WHERE player_id = ?').bind(playerId),
     db.prepare('DELETE FROM player_bests WHERE player_id = ?').bind(playerId),
     db.prepare('DELETE FROM provider_accounts WHERE player_id = ?').bind(playerId),
   ]);
   return { deleted: true };
+}
+
+async function canLinkRequestedPlayerId(db, playerId) {
+  if (!playerId || playerId.startsWith('legacy:')) return false;
+  const blocked = await db
+    .prepare(
+      `SELECT 1
+       FROM deleted_players
+       WHERE player_id = ?
+       UNION ALL
+       SELECT 1
+       FROM provider_accounts
+       WHERE player_id = ?
+       LIMIT 1`,
+    )
+    .bind(playerId, playerId)
+    .first();
+  return !blocked;
 }
 
 async function providerAccountForIdentity(db, provider, subject) {
@@ -456,7 +526,10 @@ async function upsertPlayerBest(entry, env) {
       `INSERT INTO player_bests (
          player_id, name, score, kills, date, version, updated_at
        )
-       VALUES (?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+       SELECT ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+       WHERE NOT EXISTS (
+         SELECT 1 FROM deleted_players WHERE player_id = ?
+       )
        ON CONFLICT(player_id) DO UPDATE SET
          name = excluded.name,
          score = CASE
@@ -496,8 +569,18 @@ async function upsertPlayerBest(entry, env) {
       entry.kills,
       entry.date,
       entry.version,
+      entry.playerId,
     )
     .run();
+}
+
+async function isPlayerDeleted(playerId, env) {
+  const db = requireDb(env);
+  const deleted = await db
+    .prepare('SELECT 1 FROM deleted_players WHERE player_id = ?')
+    .bind(playerId)
+    .first();
+  return Boolean(deleted);
 }
 
 async function loadLeaderboard(env, request = null) {
@@ -886,6 +969,14 @@ function publicScoreEntry(entry) {
     date: entry.date,
     version: entry.version,
   };
+}
+
+function parseRequestJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    throw httpError(400, 'invalid_json');
+  }
 }
 
 function sanitizeScoreEntry(value) {

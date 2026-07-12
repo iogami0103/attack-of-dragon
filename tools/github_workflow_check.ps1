@@ -159,6 +159,10 @@ foreach ($target in $ignoreTargets) {
     }
 }
 
+Write-Section 'Worker checks'
+Invoke-Rtk -Arguments @('node', '--check', 'server/score-submit-worker/worker.js') | Out-Null
+Invoke-Rtk -Arguments @('node', '--test', 'server/score-submit-worker/worker.test.mjs') | Out-Null
+
 if ($RunFlutterChecks) {
     Write-Section 'Flutter checks'
     Invoke-Rtk -Arguments @('flutter', 'analyze') | Out-Null

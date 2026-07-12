@@ -27,7 +27,8 @@ elif [ -x /usr/local/bin/rtk ]; then
 elif command -v rtk >/dev/null 2>&1; then
   RTK=(rtk)
 else
-  RTK=()
+  echo "ERROR: RTK was not found. Install it or set RTK_PATH." >&2
+  exit 1
 fi
 
 run() {
@@ -44,6 +45,82 @@ pause_on_exit() {
 fail() {
   printf "\nERROR: %s\n" "$1"
   EXIT_CODE=1
+}
+
+canonical_path() {
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "ERROR: python3 is required to validate iOS installer paths." >&2
+    return 1
+  fi
+  python3 - "$1" <<'PY'
+import os
+import sys
+
+print(os.path.realpath(os.path.expanduser(sys.argv[1])))
+PY
+}
+
+validate_cache_paths() {
+  local resolved_cache resolved_work resolved_github resolved_home resolved_source
+  resolved_cache="$(canonical_path "$CACHE_ROOT")" || return 1
+  resolved_work="$(canonical_path "$WORK_ROOT")" || return 1
+  resolved_github="$(canonical_path "$GITHUB_SOURCE_ROOT")" || return 1
+  resolved_home="$(canonical_path "$HOME")" || return 1
+  resolved_source="$(canonical_path "$SCRIPT_SOURCE_ROOT")" || return 1
+
+  case "$resolved_cache" in
+    /|"$resolved_home"|"$resolved_source")
+      echo "ERROR: Unsafe IOS_INSTALL_CACHE_DIR: $resolved_cache" >&2
+      return 1
+      ;;
+  esac
+  case "$resolved_cache/" in
+    "$resolved_source/"*)
+      echo "ERROR: The iOS installer cache must not be inside the source tree." >&2
+      return 1
+      ;;
+  esac
+  case "$resolved_source/" in
+    "$resolved_cache/"*)
+      echo "ERROR: The iOS installer cache must not contain the source tree." >&2
+      return 1
+      ;;
+  esac
+  case "$resolved_work/" in
+    "$resolved_cache/"*) ;;
+    *)
+      echo "ERROR: IOS_INSTALL_WORK_DIR must be inside IOS_INSTALL_CACHE_DIR." >&2
+      return 1
+      ;;
+  esac
+  case "$resolved_github/" in
+    "$resolved_cache/"*) ;;
+    *)
+      echo "ERROR: IOS_INSTALL_GITHUB_SOURCE_DIR must be inside IOS_INSTALL_CACHE_DIR." >&2
+      return 1
+      ;;
+  esac
+  if [ "$resolved_work" = "$resolved_cache" ] || [ "$resolved_github" = "$resolved_cache" ]; then
+    echo "ERROR: Installer work directories must be below the cache root." >&2
+    return 1
+  fi
+  case "$resolved_work/" in
+    "$resolved_github/"*)
+      echo "ERROR: The build workspace and GitHub source cache must not overlap." >&2
+      return 1
+      ;;
+  esac
+  case "$resolved_github/" in
+    "$resolved_work/"*)
+      echo "ERROR: The build workspace and GitHub source cache must not overlap." >&2
+      return 1
+      ;;
+  esac
+
+  CACHE_ROOT="$resolved_cache"
+  WORK_ROOT="$resolved_work"
+  GITHUB_SOURCE_ROOT="$resolved_github"
+  APP_PATH="$WORK_ROOT/build/ios/Release-iphoneos/Runner.app"
 }
 
 prepare_github_latest_source() {
@@ -227,6 +304,11 @@ prepare_build_workspace() {
 
   ROOT_DIR="$WORK_ROOT"
   cd "$ROOT_DIR" || return 1
+}
+
+validate_cache_paths || {
+  pause_on_exit
+  exit 1
 }
 
 case "$INSTALL_SOURCE_MODE" in

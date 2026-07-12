@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -86,6 +87,26 @@ void main() {
     expect(id.length, lessThanOrEqualTo(AppSettings.maxPlayerIdLength));
   });
 
+  test('score version matches the package version', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    final match = RegExp(
+      r'^version:\s*([0-9]+\.[0-9]+\.[0-9]+)',
+      multiLine: true,
+    ).firstMatch(pubspec);
+
+    expect(match, isNotNull);
+    expect(gameVersion, match!.group(1));
+  });
+
+  test('pubspec packages only runtime audio files', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+
+    expect(pubspec, isNot(contains('    - assets/audio/\n')));
+    expect(pubspec, isNot(contains('    - assets/audio/\r\n')));
+    expect(pubspec, contains('assets/audio/game_bgm_intro.ogg'));
+    expect(pubspec, contains('assets/audio/game_bgm_loop.ogg'));
+  });
+
   test('cleanName allows an empty editing value', () {
     expect(AppSettings.cleanName(''), '');
     expect(AppSettings.scoreName(''), AppSettings.fallbackPlayerName);
@@ -164,6 +185,22 @@ void main() {
     expect(AppSettings.fromPrefs(prefs).adsRemoved, isTrue);
   });
 
+  test('ordinary settings writes cannot revoke ad removal', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final settings = AppSettings.defaults();
+
+    await settings
+        .copyWith(adsRemoved: true)
+        .save(prefs, persistAdsRemoved: true);
+    await settings
+        .copyWith(adsRemoved: false, volume: 0.2)
+        .save(prefs, persistAdsRemoved: false);
+
+    expect(prefs.getBool('adsRemoved'), isTrue);
+    expect(prefs.getDouble('volume'), 0.2);
+  });
+
   test('authenticated player response parses provider account payload', () {
     final player = AuthenticatedPlayer.fromJson({
       'provider': 'apple',
@@ -174,6 +211,17 @@ void main() {
     expect(player.provider, AccountProvider.apple);
     expect(player.playerId, 'p0123456789abcdef');
     expect(player.name, 'Hinoko');
+  });
+
+  test('authenticated player response rejects an unknown provider', () {
+    expect(
+      () => AuthenticatedPlayer.fromJson({
+        'provider': 'unknown',
+        'playerId': 'p0123456789abcdef',
+        'name': 'Hinoko',
+      }),
+      throwsFormatException,
+    );
   });
 
   test('loadLocalScores returns empty when stored JSON is corrupt', () async {
@@ -213,6 +261,13 @@ void main() {
 
     expect(manifest, contains('android.permission.INTERNET'));
     expect(manifest, contains('com.google.android.gms.permission.AD_ID'));
+  });
+
+  test('android release builds never fall back to debug signing', () {
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+
+    expect(gradle, contains('Release signing is not configured'));
+    expect(gradle, isNot(contains('signingConfigs.getByName("debug")')));
   });
 
   test('ios info plist declares ad attribution and export settings', () {
@@ -305,6 +360,25 @@ void main() {
     ]);
   });
 
+  test('score ordering matches the server tie breakers', () {
+    ScoreEntry entry(String playerId, DateTime date) => ScoreEntry(
+      playerId: playerId,
+      name: playerId,
+      score: 100,
+      kills: 1,
+      date: date,
+      version: 'test',
+    );
+
+    final scores = [
+      entry('b', DateTime.utc(2026, 1, 2)),
+      entry('z', DateTime.utc(2026, 1, 1)),
+      entry('a', DateTime.utc(2026, 1, 1)),
+    ]..sort(ScoreStore.compareScores);
+
+    expect(scores.map((score) => score.playerId), ['a', 'z', 'b']);
+  });
+
   testWidgets('shows title menu actions', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
     tester.view
@@ -337,6 +411,28 @@ void main() {
     expect(find.text('Start'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Scoreboard'), findsOneWidget);
+  });
+
+  testWidgets('system back returns settings to the title', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view
+      ..physicalSize = const Size(540, 960)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const DragonApp(locale: Locale('ja')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('設定'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('プレイヤー名'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    expect(find.text('スタート'), findsOneWidget);
   });
 
   testWidgets('pause button pauses and resumes gameplay', (
@@ -374,6 +470,7 @@ void main() {
           adMob: AdMobService(),
           onRankedRunStart: () async => null,
           onScore: (_) async {},
+          onOnlineScore: (_) async {},
           onTitle: () {},
           onScoreboard: () {},
           images: Future.value(images),
@@ -400,6 +497,77 @@ void main() {
 
     expect(find.text('一時停止'), findsNothing);
     expect(find.byTooltip('一時停止'), findsOneWidget);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+
+    expect(find.text('一時停止'), findsOneWidget);
+    expect(find.text('再開'), findsWidgets);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  });
+
+  testWidgets('submits after a delayed ranked-run token arrives', (
+    WidgetTester tester,
+  ) async {
+    final audio = GameAudio();
+    addTearDown(audio.dispose);
+    final images = (await tester.runAsync<GameImages>(() async {
+      return GameImages(
+        sky: await createTestImage(width: 16, height: 16, cache: false),
+        dragonAtlas: await createTestImage(
+          width: 1536,
+          height: 192,
+          cache: false,
+        ),
+        enemyAtlas: await createTestImage(
+          width: 768,
+          height: 768,
+          cache: false,
+        ),
+      );
+    }))!;
+    final token = List<String>.filled(64, 'a').join();
+    final tokenCompleter = Completer<String?>();
+    final localScores = <ScoreEntry>[];
+    final onlineScores = <ScoreEntry>[];
+    tester.view
+      ..physicalSize = const Size(540, 960)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      localizedTestApp(
+        home: GameScreen(
+          settings: AppSettings.defaults(),
+          bestScore: 0,
+          audio: audio,
+          adMob: AdMobService(),
+          onRankedRunStart: () => tokenCompleter.future,
+          onScore: (score) async => localScores.add(score),
+          onOnlineScore: (score) async => onlineScores.add(score),
+          onTitle: () {},
+          onScoreboard: () {},
+          images: Future.value(images),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tapAt(const Offset(270, 480));
+
+    for (var frame = 0; frame < 600 && localScores.isEmpty; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(localScores, hasLength(1));
+    expect(localScores.single.runToken, isNull);
+    expect(onlineScores, isEmpty);
+
+    tokenCompleter.complete(token);
+    await tester.pump();
+
+    expect(onlineScores, hasLength(1));
+    expect(onlineScores.single.runToken, token);
   });
 
   testWidgets('uses generated player name when settings name is cleared', (
@@ -470,6 +638,8 @@ void main() {
             audio: audio,
             adRemoval: AdRemovalPurchaseService(),
             onChanged: (_) {},
+            onClearLocalScores: () async {},
+            onAccountBusyChanged: (_) {},
             onBack: () {},
           ),
         ),
@@ -499,6 +669,8 @@ void main() {
           audio: audio,
           adRemoval: AdRemovalPurchaseService(),
           onChanged: (_) {},
+          onClearLocalScores: () async {},
+          onAccountBusyChanged: (_) {},
           onBack: () {},
         ),
       ),
@@ -538,6 +710,8 @@ void main() {
           audio: audio,
           adRemoval: AdRemovalPurchaseService(),
           onChanged: (_) {},
+          onClearLocalScores: () async {},
+          onAccountBusyChanged: (_) {},
           onBack: () {},
         ),
       ),
@@ -546,6 +720,7 @@ void main() {
 
     expect(find.text('広告削除'), findsOneWidget);
     expect(find.text('広告削除済み'), findsWidgets);
+    expect(find.text('¥300'), findsNothing);
   });
 
   testWidgets('settings marks Google login state', (WidgetTester tester) async {
@@ -568,6 +743,8 @@ void main() {
             audio: audio,
             adRemoval: AdRemovalPurchaseService(),
             onChanged: (_) {},
+            onClearLocalScores: () async {},
+            onAccountBusyChanged: (_) {},
             onBack: () {},
           ),
         ),
@@ -604,6 +781,8 @@ void main() {
             audio: audio,
             adRemoval: AdRemovalPurchaseService(),
             onChanged: (_) {},
+            onClearLocalScores: () async {},
+            onAccountBusyChanged: (_) {},
             onBack: () {},
           ),
         ),
