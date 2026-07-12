@@ -345,3 +345,16 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
   - Increased the next store build to `1.0.1+3`; Play Console release `2` was already under review before this fix, so version `3` must be built and submitted to deliver it to closed testers.
 - Notes for next session:
   - Flutter test/analyze/format remains intentionally skipped in this Windows environment because the test path repeatedly hangs.
+
+## 2026-07-12 Device: Windows / AI: Codex - Submit Android closed test and prepare iOS handoff
+
+- Branch: `main`
+- PR: not created
+- Done:
+  - Built the signed Android App Bundle `1.0.1+3` successfully.
+  - Uploaded bundle version `3 (1.0.1)` to the Play Console Alpha closed-test track, added Japanese release notes, and submitted the change for Google review.
+  - Confirmed Play Console now reports the Alpha release as a change under review.
+- Notes for next session:
+  - On Mac, pull `main`, run the Flutter checks, then build/upload the iOS `1.0.1 (3)` IPA through Xcode Organizer/App Store Connect.
+  - Before submitting iOS review, set the App Store Connect Support URL to `https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev/support` and attach a physical-device screen recording showing sign-in, navigation to account deletion, deletion completion, and confirmation in App Review Notes.
+  - Apple review was not submitted in this Windows session; the Mac operator should make the final submission after the recording is ready.
