@@ -9,6 +9,7 @@ const GOOGLE_JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
 const APPLE_JWKS_URL = 'https://appleid.apple.com/auth/keys';
 const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
 const APPLE_ISSUER = 'https://appleid.apple.com';
+const SUPPORT_EMAIL = 'i.ogami.0103@gmail.com';
 const PRIVACY_POLICY_TEXT = `Attack of the Dragon Privacy Policy
 
 Last updated: 2026-07-04
@@ -43,7 +44,7 @@ Infrastructure:
 - The app does not sell personal data.
 
 Data deletion:
-- To request deletion of online ranking or account-link data, contact the developer through the contact information shown on the app's store listing. Include your player name and, if available, your player identifier.
+- To delete a linked account and its online ranking data, use Settings > Delete Account in the app. You will be asked to confirm with the same sign-in provider before deletion.
 
 Third-party services:
 - Google Sign-In: https://policies.google.com/privacy
@@ -83,6 +84,14 @@ export default {
             corsHeaders,
           );
         }
+        if (url.pathname === '/support' || url.pathname === '/support/') {
+          return textResponse(
+            supportPageHtml(),
+            200,
+            'text/html; charset=utf-8',
+            corsHeaders,
+          );
+        }
 
         const leaderboard = await loadLeaderboard(env, request);
         return jsonResponse(leaderboardToJson(leaderboard), 200, corsHeaders);
@@ -103,6 +112,10 @@ export default {
       if (action === 'authenticateProvider') {
         const player = await authenticateProvider(body, env);
         return jsonResponse({ ok: true, player }, 200, corsHeaders);
+      }
+      if (action === 'deleteAccount') {
+        const result = await deleteAccount(body, env);
+        return jsonResponse({ ok: true, ...result }, 200, corsHeaders);
       }
       if (action === 'startRun') {
         const run = await startRun(body, env);
@@ -191,7 +204,7 @@ function privacyPolicyHtml() {
   </ul>
 
   <h2>Data deletion</h2>
-  <p>To request deletion of online ranking or account-link data, contact the developer through the contact information shown on the app's store listing. Include your player name and, if available, your player identifier.</p>
+  <p>To delete a linked account and its online ranking data, use <strong>Settings &gt; Delete Account</strong> in the app. You must confirm with the same sign-in provider before deletion. This permanently deletes the account link, online ranking entry, score history, and active run tokens for that player.</p>
 
   <h2>Third-party services</h2>
   <ul>
@@ -201,6 +214,40 @@ function privacyPolicyHtml() {
     <li><a href="https://www.apple.com/legal/privacy/">Apple App Store</a></li>
     <li><a href="https://www.cloudflare.com/privacypolicy/">Cloudflare</a></li>
   </ul>
+</main>
+</html>`;
+}
+
+function supportPageHtml() {
+  return `<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attack of the Dragon Support</title>
+<style>
+  :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body { margin: 0; background: #fff8ed; color: #2f1f18; line-height: 1.6; }
+  main { max-width: 820px; margin: 0 auto; padding: 40px 20px 56px; }
+  h1 { font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.1; margin: 0 0 8px; }
+  h2 { margin: 28px 0 8px; font-size: 1.15rem; }
+  p, li { font-size: 1rem; }
+  ul { padding-left: 1.35rem; }
+  a { color: #9b3d1a; }
+</style>
+<main>
+  <h1>Attack of the Dragon Support</h1>
+  <p>For help with the game, account access, purchases, or rankings, contact the developer by email.</p>
+
+  <h2>Contact</h2>
+  <p><a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
+
+  <h2>Account deletion</h2>
+  <p>To delete a linked account and its online ranking data, open <strong>Settings &gt; Delete Account</strong> in the app. You will confirm with the same sign-in provider before deletion.</p>
+
+  <h2>Before contacting support</h2>
+  <p>Please include your device model, operating system version, game version, and a description of the issue. Do not send passwords or sign-in tokens.</p>
+
+  <p><a href="/privacy">Privacy Policy</a></p>
 </main>
 </html>`;
 }
@@ -344,6 +391,38 @@ async function authenticateProvider(value, env) {
   }
 
   throw httpError(500, 'account_link_failed');
+}
+
+async function deleteAccount(value, env) {
+  const db = requireDb(env);
+  const provider = normalizeProvider(`${value?.provider || ''}`);
+  if (!provider) throw httpError(400, 'invalid_provider');
+
+  const idToken = `${value?.idToken || value?.identityToken || ''}`.trim();
+  if (!idToken) throw httpError(400, 'missing_id_token');
+
+  const identity =
+    provider === 'google'
+      ? await verifyGoogleIdToken(idToken, env)
+      : await verifyAppleIdentityToken(idToken, env);
+  const account = await providerAccountForIdentity(db, provider, identity.subject);
+  if (!account) throw httpError(404, 'account_not_found');
+
+  const requestedPlayerId = cleanPlayerId(
+    `${value?.playerId || value?.player_id || ''}`,
+  );
+  if (requestedPlayerId && requestedPlayerId !== account.player_id) {
+    throw httpError(403, 'account_mismatch');
+  }
+
+  const playerId = account.player_id;
+  await db.batch([
+    db.prepare('DELETE FROM run_tokens WHERE player_id = ?').bind(playerId),
+    db.prepare('DELETE FROM scores WHERE player_id = ?').bind(playerId),
+    db.prepare('DELETE FROM player_bests WHERE player_id = ?').bind(playerId),
+    db.prepare('DELETE FROM provider_accounts WHERE player_id = ?').bind(playerId),
+  ]);
+  return { deleted: true };
 }
 
 async function providerAccountForIdentity(db, provider, subject) {

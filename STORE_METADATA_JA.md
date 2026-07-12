@@ -8,7 +8,7 @@
 - カテゴリ案: ゲーム / アクション
 - 対応言語案: 日本語
 - プライバシーポリシー URL: https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev/privacy
-- サポート URL 案: プライバシーポリシー URL と同じ、またはストアの開発者連絡先
+- サポート URL: `https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev/support`
 
 ## 短い説明
 

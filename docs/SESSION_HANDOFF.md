@@ -302,3 +302,17 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 - Notes for next session:
   - Rebased the change onto the current `origin/main` (five remote commits) without conflicts before pushing.
   - Flutter formatting and tests were intentionally not run: this environment's test path repeatedly hangs. `git diff --check` passed; use a known-good local Flutter shell for full format/analyze/test verification.
+
+## 2026-07-12 Device: Windows / AI: Codex - Add account deletion and support page
+
+- Branch: `main`
+- PR: not created
+- Done:
+  - Added an in-app Settings > Delete Account flow that asks for confirmation, reauthenticates with the current provider, deletes server-side account data, clears local scores, and resets the device to a new guest ID.
+  - Added the Worker `deleteAccount` action, which verifies the Google/Apple identity token and deletes linked provider records, scores, player bests, and active run tokens for the authenticated player.
+  - Added `https://attack-of-the-dragon-score-submit.i-ogami-0103.workers.dev/support` with the approved support email and account-deletion guidance; deployed Worker version `c1a3b170-3043-41ca-95f8-4e22a74f418b`.
+  - Updated privacy-policy and store metadata references. Increased the Android/iOS package version to `1.0.1+2`.
+  - Ran `node --check server/score-submit-worker/worker.js`, `git diff --check`, verified `/support` and `/privacy` return HTTP 200, and built the release AAB at `build/app/outputs/bundle/release/app-release.aab`.
+- Notes for next session:
+  - Flutter test/analyze/format remains intentionally skipped in this Windows environment because the test path repeatedly hangs.
+  - Update App Store Connect's Support URL to the `/support` URL above and submit a new iOS build from a Mac, including a physical-device screen recording of the complete sign-in and account-deletion flow in App Review Notes.

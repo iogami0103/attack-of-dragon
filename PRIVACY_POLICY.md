@@ -39,7 +39,7 @@ Attack of the Dragon stores gameplay data only for running the game, showing ran
 
 ## Data deletion
 
-To request deletion of online ranking or account-link data, contact the developer through the contact information shown on the app's store listing. Include your player name and, if available, your player identifier.
+To delete a linked account and its online ranking data, use `Settings > Delete Account` in the app. You will be asked to confirm with the same sign-in provider before deletion. This permanently deletes the account link, online ranking entry, score history, and active run tokens for that player.
 
 ## Third-party services
 

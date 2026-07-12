@@ -123,6 +123,19 @@ class DragonStrings {
   String get volume => isJapanese ? '音量' : 'Volume';
   String get logout => isJapanese ? 'ログアウト' : 'Log Out';
   String get loggedOut => isJapanese ? 'ログアウトしました。' : 'Logged out.';
+  String get deleteAccount =>
+      isJapanese ? 'アカウントを削除' : 'Delete Account';
+  String get deleteAccountTitle =>
+      isJapanese ? 'アカウントを削除しますか？' : 'Delete account?';
+  String get deleteAccountDescription => isJapanese
+      ? 'オンラインランキング、スコア履歴、アカウント連携を完全に削除します。この操作は元に戻せません。'
+      : 'Your online ranking, score history, and account link will be permanently deleted. This cannot be undone.';
+  String get cancel => isJapanese ? 'キャンセル' : 'Cancel';
+  String get accountDeleted =>
+      isJapanese ? 'アカウントを削除しました。' : 'Account deleted.';
+  String get accountDeletionFailed => isJapanese
+      ? 'アカウントを削除できませんでした。もう一度お試しください。'
+      : 'Could not delete the account. Please try again.';
   String signedInWith(String provider) =>
       isJapanese ? '$providerでログイン済み' : 'Signed in with $provider';
   String signInWith(String provider) =>
@@ -2050,6 +2063,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _authenticatingProvider = null);
   }
 
+  Future<void> _requestAccountDeletion(AccountProvider provider) async {
+    final strings = DragonStrings.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(strings.deleteAccountTitle),
+        content: Text(strings.deleteAccountDescription),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(strings.deleteAccount),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _authenticatingProvider = provider);
+    try {
+      // Require a current provider credential before deleting account data.
+      final credential = switch (provider) {
+        AccountProvider.google => await AccountSignIn.signInWithGoogle(),
+        AccountProvider.apple => await AccountSignIn.signInWithApple(),
+      };
+      await ScoreStore.deleteAccount(
+        settings: _settingsForSave(_draft),
+        credential: credential,
+      );
+      try {
+        await AccountSignIn.signOut(provider);
+      } catch (_) {
+        // The server deletion succeeded, so complete local cleanup regardless.
+      }
+      await ScoreStore.clearLocalScores();
+      if (!mounted) return;
+      _commit(
+        _draft.copyWith(
+          playerId: AppSettings.randomPlayerId(),
+          clearAccountProvider: true,
+        ),
+      );
+      _showAccountMessage(strings.accountDeleted);
+    } catch (error, stackTrace) {
+      _logAccountAuthError(provider, error, stackTrace);
+      _showAccountMessage(strings.accountDeletionFailed);
+    } finally {
+      if (mounted) setState(() => _authenticatingProvider = null);
+    }
+  }
+
   void _showAccountMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -2167,6 +2234,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     onPressed: _accountBusy
                                         ? null
                                         : () => _logout(accountProvider),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _FantasyButton(
+                                    icon: Icons.delete_forever_rounded,
+                                    label: strings.deleteAccount,
+                                    tone: _FantasyButtonTone.secondary,
+                                    height: 46,
+                                    busy:
+                                        _authenticatingProvider ==
+                                        accountProvider,
+                                    onPressed: _accountBusy
+                                        ? null
+                                        : () => _requestAccountDeletion(
+                                            accountProvider,
+                                          ),
                                   ),
                                 ] else
                                   _FantasyButton(
@@ -5383,6 +5465,23 @@ class ScoreStore {
       throw const FormatException('invalid_authenticated_player_response');
     }
     return AuthenticatedPlayer.fromJson(Map<String, dynamic>.from(player));
+  }
+
+  static Future<void> deleteAccount({
+    required AppSettings settings,
+    required ProviderCredential credential,
+  }) async {
+    await _postAction({
+      'action': 'deleteAccount',
+      'provider': credential.provider.apiValue,
+      'idToken': credential.idToken,
+      'playerId': AppSettings.cleanPlayerId(settings.playerId),
+    });
+  }
+
+  static Future<void> clearLocalScores() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('scores');
   }
 
   static Future<Map<String, dynamic>> _postAction(
