@@ -18,7 +18,7 @@
 
 - [x] 本番 `applicationId` を `io.github.iogami0103.attackofthedragon` に確定する。
 - [ ] Google Play App Signing を使うか、リリース keystore を使うかを確定する。
-- [ ] Google Play Console で非消耗型のアプリ内商品 `remove_ads` を作成し、価格を `300 JPY` に設定する。
+- [x] Google Play Console で非消耗型のアプリ内商品 `remove_ads` を作成し、価格を `300 JPY` に設定する。(2026-07-06 完了: 1 回限りのアイテム `remove_ads`、購入オプション `standard`、日本 `JPY 300`、下位互換性あり、有効)
 - [x] `android/key.properties.example` を `android/key.properties` にコピーし、実際の keystore 情報を入れる。
 - [x] `android/key.properties` と keystore が `git status` に出ていないことを確認する。
 - [x] `android/upload-key-fingerprints.txt` の SHA-1 を Google OAuth Android クライアントへ登録する。(2026-07-04 登録済み: クライアント名 `Attack of the Dragon Android Upload`)

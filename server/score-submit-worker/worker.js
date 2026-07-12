@@ -11,7 +11,7 @@ const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'];
 const APPLE_ISSUER = 'https://appleid.apple.com';
 const PRIVACY_POLICY_TEXT = `Attack of the Dragon Privacy Policy
 
-Last updated: 2026-07-04
+Last updated: 2026-07-06
 
 Attack of the Dragon stores gameplay data only for running the game, showing rankings, restoring an account link, serving ads, and remembering whether the ad removal purchase is active.
 
@@ -43,7 +43,10 @@ Infrastructure:
 - The app does not sell personal data.
 
 Data deletion:
-- To request deletion of online ranking or account-link data, contact the developer through the contact information shown on the app's store listing. Include your player name and, if available, your player identifier.
+- To request deletion of your Attack of the Dragon account-link data, online ranking data, or both, contact the developer through the contact information shown on the app's store listing. Include your player name and, if available, your player identifier.
+- Deleted online ranking data includes player identifier, player name, score, defeated enemy count, play date, and game version. Deleted account-link data includes provider name, provider account subject identifier, player identifier, and player name.
+- Deletion requests are normally completed within 30 days. Data that must be kept for security, fraud prevention, or legal reasons may be retained for up to 90 days before being deleted or anonymized. Online score history entries are automatically pruned after 35 days; leaderboard best scores and account-link data are kept until you request deletion or the service is no longer needed.
+- Local data stored on your device can be removed by clearing the app's data or uninstalling the app. Purchase records are managed by Google Play or Apple App Store, and advertising data is managed by Google and its partners according to their privacy controls.
 
 Third-party services:
 - Google Sign-In: https://policies.google.com/privacy
@@ -148,7 +151,7 @@ function privacyPolicyHtml() {
 </style>
 <main>
   <h1>Attack of the Dragon Privacy Policy</h1>
-  <p><strong>Last updated:</strong> 2026-07-04</p>
+  <p><strong>Last updated:</strong> 2026-07-06</p>
   <p>Attack of the Dragon stores gameplay data only for running the game, showing rankings, restoring an account link, serving ads, and remembering whether the ad removal purchase is active.</p>
 
   <h2>Data stored on this device</h2>
@@ -191,7 +194,10 @@ function privacyPolicyHtml() {
   </ul>
 
   <h2>Data deletion</h2>
-  <p>To request deletion of online ranking or account-link data, contact the developer through the contact information shown on the app's store listing. Include your player name and, if available, your player identifier.</p>
+  <p>To request deletion of your Attack of the Dragon account-link data, online ranking data, or both, contact the developer through the contact information shown on the app's store listing. Include your player name and, if available, your player identifier.</p>
+  <p>Deleted online ranking data includes player identifier, player name, score, defeated enemy count, play date, and game version. Deleted account-link data includes provider name, provider account subject identifier, player identifier, and player name.</p>
+  <p>Deletion requests are normally completed within 30 days. Data that must be kept for security, fraud prevention, or legal reasons may be retained for up to 90 days before being deleted or anonymized. Online score history entries are automatically pruned after 35 days; leaderboard best scores and account-link data are kept until you request deletion or the service is no longer needed.</p>
+  <p>Local data stored on your device can be removed by clearing the app's data or uninstalling the app. Purchase records are managed by Google Play or Apple App Store, and advertising data is managed by Google and its partners according to their privacy controls.</p>
 
   <h2>Third-party services</h2>
   <ul>
