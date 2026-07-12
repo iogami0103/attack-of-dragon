@@ -317,3 +317,15 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
   - Flutter test/analyze/format remains intentionally skipped in this Windows environment because the test path repeatedly hangs.
   - Update App Store Connect's Support URL to the `/support` URL above and submit a new iOS build from a Mac, including a physical-device screen recording of the complete sign-in and account-deletion flow in App Review Notes.
   - Android App Bundle `2 (1.0.1)` was uploaded to the Play Console `alpha` closed-test release, passed preview checks, and was submitted to Google. Play Console now shows the change as under review; its automatic check estimated about 13 minutes, while the page states full review can take up to 7 days.
+
+## 2026-07-12 Device: Windows / AI: Codex - Unblock immediate BGM volume changes
+
+- Branch: `main`
+- PR: not created
+- Done:
+  - Diagnosed the Android volume issue after confirming the device had the current `1.0.1 (2)` build installed: awaiting `just_audio`'s looping `play()` call blocked the music-operation queue, so later `setVolume()` calls waited until playback ended.
+  - Changed BGM start, intro-loop start, and resume paths to start playback without awaiting its completion, keeping the queue available for immediate volume changes.
+  - Ran `git diff --check`, built a release APK successfully, installed it over Wi-Fi ADB, and started the app on `192.168.1.6:5555`. The installed package update time is `2026-07-12 12:26:22`.
+  - Increased the next store build to `1.0.1+3`; Play Console release `2` was already under review before this fix, so version `3` must be built and submitted to deliver it to closed testers.
+- Notes for next session:
+  - Flutter test/analyze/format remains intentionally skipped in this Windows environment because the test path repeatedly hangs.

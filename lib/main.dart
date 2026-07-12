@@ -5670,7 +5670,13 @@ class GameAudio {
       if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _music.seek(Duration.zero);
       if (_disposed || generation != _musicGeneration || !_appActive) return;
-      await _music.play();
+      // `play()` completes only when playback ends. Waiting for a looping BGM
+      // here blocks the music queue and prevents later volume changes.
+      unawaited(
+        _music.play().catchError((Object error) {
+          _logAudioError('play music', error);
+        }),
+      );
     });
   }
 
@@ -5709,7 +5715,12 @@ class GameAudio {
       if (_disposed || generation != _musicGeneration || !_appActive) return;
       await _music.setVolume(_settings.volume * 0.55);
       if (_disposed || generation != _musicGeneration || !_appActive) return;
-      await _music.play();
+      // Keep the queue available for immediate settings changes while looping.
+      unawaited(
+        _music.play().catchError((Object error) {
+          _logAudioError('play music intro', error);
+        }),
+      );
     });
   }
 
@@ -5849,7 +5860,12 @@ class GameAudio {
       if (_disposed || !_appActive || _musicHeldForAd) return;
       await _music.setVolume(_settings.volume * 0.55);
       if (_disposed || !_appActive || _musicHeldForAd) return;
-      await _music.play();
+      // Do not hold the queue until the looping track finishes.
+      unawaited(
+        _music.play().catchError((Object error) {
+          _logAudioError('resume music', error);
+        }),
+      );
     });
   }
 
