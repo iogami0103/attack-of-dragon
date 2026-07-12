@@ -316,3 +316,4 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 - Notes for next session:
   - Flutter test/analyze/format remains intentionally skipped in this Windows environment because the test path repeatedly hangs.
   - Update App Store Connect's Support URL to the `/support` URL above and submit a new iOS build from a Mac, including a physical-device screen recording of the complete sign-in and account-deletion flow in App Review Notes.
+  - Android App Bundle `2 (1.0.1)` was uploaded to the Play Console `alpha` closed-test release and passed its preview checks. The final Play Console `Save` action is pending user confirmation.
