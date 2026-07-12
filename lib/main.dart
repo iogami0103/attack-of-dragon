@@ -1895,8 +1895,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _commit(AppSettings settings) {
     final settingsForSave = _settingsForSave(settings);
     setState(() => _draft = settings);
-    widget.audio.applySettings(settingsForSave);
     widget.onChanged(settingsForSave);
+  }
+
+  void _previewVolume(double volume) {
+    final settings = _draft.copyWith(volume: volume);
+    setState(() => _draft = settings);
+    widget.audio.applySettings(_settingsForSave(settings));
+  }
+
+  void _commitVolume(double volume) {
+    _commit(_draft.copyWith(volume: volume));
   }
 
   AppSettings _settingsForSave(AppSettings settings) {
@@ -1911,7 +1920,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _backToTitle() {
     final settingsForSave = _settingsForSave(_draft);
-    widget.audio.applySettings(settingsForSave);
     widget.onChanged(settingsForSave);
     widget.onBack();
   }
@@ -2209,9 +2217,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               Slider(
                                 value: _draft.volume,
-                                onChanged: (value) {
-                                  _commit(_draft.copyWith(volume: value));
-                                },
+                                onChanged: _previewVolume,
+                                onChangeEnd: _commitVolume,
                               ),
                               const Divider(height: 26),
                               if (accountProvider != null) ...[
@@ -5554,6 +5561,8 @@ class GameAudio {
   late final StreamSubscription<int?> _musicIndexSubscription;
   AppSettings _settings = AppSettings.defaults();
   Future<void> _musicQueue = Future<void>.value();
+  double? _pendingMusicVolume;
+  bool _musicVolumeUpdateRunning = false;
   final Map<String, _SfxPool> _sfxPools = {};
   final Map<String, _LoopSfx> _loopSfx = {};
   int _musicGeneration = 0;
@@ -5586,6 +5595,14 @@ class GameAudio {
     });
   }
 
+  @visibleForTesting
+  double get musicVolume => _music.volume;
+
+  @visibleForTesting
+  Future<void> enqueueMusicOperationForTesting(
+    Future<void> Function() operation,
+  ) => _enqueueMusic(operation);
+
   void applySettings(AppSettings settings) {
     _settings = settings;
     for (final loop in _loopSfx.values) {
@@ -5606,12 +5623,37 @@ class GameAudio {
         }),
       );
     }
-    unawaited(
-      _enqueueMusic(() async {
-        if (_disposed) return;
-        await _music.setVolume(_settings.volume * 0.55);
-      }),
-    );
+    _scheduleMusicVolumeUpdate();
+  }
+
+  void _scheduleMusicVolumeUpdate() {
+    _pendingMusicVolume = (_settings.volume * 0.55)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    if (_musicVolumeUpdateRunning || _disposed) return;
+    _musicVolumeUpdateRunning = true;
+    unawaited(_flushMusicVolumeUpdates());
+  }
+
+  Future<void> _flushMusicVolumeUpdates() async {
+    try {
+      while (!_disposed && _pendingMusicVolume != null) {
+        final volume = _pendingMusicVolume!;
+        _pendingMusicVolume = null;
+        try {
+          // Do not use _musicQueue here. On iOS, AudioPlayer.play() stays
+          // pending while looping, so a queued volume update never runs.
+          await _music.setVolume(volume);
+        } catch (error) {
+          _logAudioError('set music volume', error);
+        }
+      }
+    } finally {
+      _musicVolumeUpdateRunning = false;
+      if (!_disposed && _pendingMusicVolume != null) {
+        _scheduleMusicVolumeUpdate();
+      }
+    }
   }
 
   Future<void> preloadSfx(Iterable<String> files) async {

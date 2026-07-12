@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -26,6 +27,15 @@ Widget localizedTestApp({
   );
 }
 
+class _RecordingGameAudio extends GameAudio {
+  final List<AppSettings> appliedSettings = [];
+
+  @override
+  void applySettings(AppSettings settings) {
+    appliedSettings.add(settings);
+  }
+}
+
 void main() {
   testWidgets('loads referenced audio assets', (tester) async {
     const files = [
@@ -52,6 +62,23 @@ void main() {
         reason: '${entry.key} -> ${entry.value}',
       );
     }
+  });
+
+  test('music volume updates while the playback queue is busy', () async {
+    final audio = GameAudio();
+    final blocker = Completer<void>();
+    addTearDown(() {
+      if (!blocker.isCompleted) blocker.complete();
+      audio.dispose();
+    });
+
+    unawaited(audio.enqueueMusicOperationForTesting(() => blocker.future));
+    await Future<void>.delayed(Duration.zero);
+
+    audio.applySettings(AppSettings.defaults().copyWith(volume: 0.2));
+
+    expect(audio.musicVolume, closeTo(0.11, 0.0001));
+    blocker.complete();
   });
 
   test('repairs zero byte just_audio asset cache files on Windows', () async {
@@ -518,6 +545,53 @@ void main() {
       find.text('SFX: The Ultimate 2017 16 bit Mini pack (CC0)'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('volume slider previews continuously and saves once on release', (
+    WidgetTester tester,
+  ) async {
+    final audio = _RecordingGameAudio();
+    addTearDown(audio.dispose);
+    final savedSettings = <AppSettings>[];
+    tester.view
+      ..physicalSize = const Size(540, 960)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      localizedTestApp(
+        home: SettingsScreen(
+          settings: AppSettings.defaults(),
+          audio: audio,
+          adRemoval: AdRemovalPurchaseService(),
+          onChanged: savedSettings.add,
+          onBack: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+
+    var slider = tester.widget<Slider>(find.byType(Slider));
+    slider.onChanged!(0.6);
+    await tester.pump();
+    slider = tester.widget<Slider>(find.byType(Slider));
+    slider.onChanged!(0.25);
+    await tester.pump();
+
+    expect(find.text('25%'), findsOneWidget);
+    expect(audio.appliedSettings.map((settings) => settings.volume), [
+      0.6,
+      0.25,
+    ]);
+    expect(savedSettings, isEmpty);
+
+    slider = tester.widget<Slider>(find.byType(Slider));
+    slider.onChangeEnd!(0.25);
+    await tester.pump();
+
+    expect(savedSettings, hasLength(1));
+    expect(savedSettings.single.volume, 0.25);
   });
 
   testWidgets('settings marks ad removal purchase state', (

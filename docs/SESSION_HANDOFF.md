@@ -38,6 +38,20 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-12 Device: Mac / AI: Codex — iOS音量スライダーを修正してApp Store Connectへ送信
+
+- Branch: `codex/fix-ios-volume-slider`
+- PR: 未作成
+- やったこと:
+  - iOSでBGM再生中に音量変更が効かない原因を修正。`AudioPlayer.play()` がループ再生中に完了しないため、BGM音量更新が再生キューの後ろで停止していた。
+  - 音量更新を再生キューから分離し、ドラッグ中は即時プレビュー、指を離した時だけ設定を保存するように変更。
+  - iPhone実機へ `1.0.1 (3)` を直接インストールし、ユーザーが改善を確認。
+  - `flutter analyze`、`flutter test`、`flutter build ios --release`、GitHubワークフローチェックを通過。
+  - `1.0.1 (3)` のIPAをApp Store Connectへアップロード成功。Apple側では処理中。
+- 次のセッションへの申し送り:
+  - App Store Connectで `1.0.1 (3)` の処理完了後、却下済みのiOS 1.0提出から新しいiOS 1.0.1バージョンを作成し、最新ビルドを選択してApp Reviewへ提出する。
+  - ローカル `main` は未コミット変更を含み `origin/main` より遅れているため、pull/stash/resetは行わないこと。iPhoneへローカル変更版を入れると今回の修正は含まれない。
+
 ## 2026-07-06 Device: Mac / AI: Codex — Mac RTK 手順を追加
 
 - Branch: `main`
