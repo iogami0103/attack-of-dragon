@@ -38,6 +38,23 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-07-12 Device: Mac / AI: Claude — App Store却下対応と審査再提出
+
+- Branch: `main`（別途 `codex/google-play-remove-ads-privacy-details` でPR #5作成・マージ待ち）
+- PR: #5（remove_ads/プライバシー文言）、#3はクローズ（1.0.1アップロード済みの現状に対し陳腐化・conflicting）
+- やったこと:
+  - セッション開始時、ローカル`main`がorigin/mainより7コミット遅れ、かつ未コミット変更（Google Play remove_ads完了マーク、プライバシーポリシーの削除データ詳細、worker.js）が残っていたのを発見。`codex/google-play-remove-ads-privacy-details`ブランチに分離してPR化（#5）してからorigin/mainをpull。
+  - pull時にdocs/SESSION_HANDOFF.mdが両側で追記されていてconflict、手動マージで両エントリを保持。
+  - App Store Connectを確認したところ、バージョン1.0 (1.0.0(2))が2026/7/8にApple審査で却下済みと判明（引き継ぎ未記載）。却下理由: (1) Guideline 5.1.1(v) アカウント削除機能なし→本日`fcf737c`で対応済みコードがmainに反映済みだったが未検証、(2) Guideline 1.5 サポートURLが`/privacy`を指しており不適切→`/support`ページはworker.jsに実装・デプロイ済みだが App Store Connect側の設定が未更新だった。
+  - ユーザーがiPhone実機でアカウント削除フローを録画し、Appleの却下メッセージへ返信・添付。
+  - サポートURLを`/support`に修正して保存。ビルドを最新の`1.0.1 (3)`（TestFlightで処理完了済み）に差し替えて保存。「App Reviewに再提出」を実行し、ステータスは「審査待ち」に変わった。
+  - 古いPR #3（1.0.0 (1)向け、7/5作成、CONFLICTING状態）をクローズ。
+- 次のセッションへの申し送り:
+  - App Store側は審査待ち。結果連絡が来たら次のセッションで確認する。
+  - リリース方式は「手動でリリースする」のまま。審査通過後も自動公開されないので、公開する場合は明示指示のうえ手動リリース操作が必要。
+  - PR #5（Google Play remove_ads完了マーク、プライバシーポリシー削除データ詳細）はマージ未確認。次セッションでマージ状況を確認する。
+  - `docs/google_play_console_report.html`は未追跡のまま。
+
 ## 2026-07-12 Device: Windows / AI: Codex — 全体監査と高優先度の堅牢化
 
 - Branch: `codex/repository-wide-improvements`
