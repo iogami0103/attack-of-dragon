@@ -41,7 +41,7 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 ## 2026-08-17 Device: Mac / AI: Codex — Apple / Google 1.1.0 (4) リリース準備
 
 - Branch: `codex/release-1-1-0`
-- PR: 未作成
+- PR: #6
 - やったこと:
   - `main` が `origin/main` と同期済みであることを確認し、Workerテスト、`flutter analyze`、`flutter test` を通過した。
   - ローカル未コミットの `1.1.0+4` から Android本番署名AABを再生成し、versionCode `4` / versionName `1.1.0`、upload key指紋一致、SHA-256 `7191624238fb3f7a136c53f209f1b6415d3a550a11fc6a5741ef647b5912cb61` を確認した。
