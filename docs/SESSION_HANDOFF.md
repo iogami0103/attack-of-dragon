@@ -38,6 +38,20 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-08-17 Device: Mac / AI: Codex — Google Play 製品版 1.1.1 (5) を審査送信
+
+- Branch: `main`
+- PR: #6（squash merge済み）
+- やったこと:
+  - GitHub の最新 `main`（`c95a4d3d10c7c3f8c18266766c165e19e42ac449`）から Android 本番署名AAB `1.1.1 (5)` を生成し、versionCode `5` / versionName `1.1.1`、target SDK `36`、upload key指紋一致を確認した。
+  - AABのSHA-256は `ea9b55b5f88632d8143699cb516a43f8a698135d0ee928832c505c0ece4d2f5e`。ローカルのWorkerテスト、`flutter analyze`、`flutter test`、GitHub Actions 2件はすべて通過した。
+  - Google Play製品版へ `1.1.1 (5)` をアップロードし、日本語・英語のリリースノート、公開率100%、全対象国を確認して審査に送信した。Play Consoleでは製品版が「審査中の変更」に入り、自動クイックチェックが進行中。
+  - 既存のクローズドテスト Alpha トラック停止変更は送信対象から外し、「審査にまだ送信されていない変更」に残した。Apple側には変更を加えていない。
+- 次のセッションへの申し送り:
+  - 管理対象の公開はオフのため、Googleの審査承認後は製品版 `1.1.1 (5)` が自動公開される。Play Consoleまたは通知メールで審査結果を確認する。
+  - 未送信の Alpha トラック停止変更は意図的に保留している。別途明示指示があるまで審査送信しない。
+  - `docs/google_play_console_report.html` は今回も未追跡のまま残しており、コミット対象に含めていない。
+
 ## 2026-08-17 Device: Mac / AI: Codex — Apple / Google 1.1.0 (4) リリース準備
 
 - Branch: `codex/release-1-1-0`
