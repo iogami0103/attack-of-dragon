@@ -74,7 +74,7 @@ const _googleServerClientId = String.fromEnvironment(
   defaultValue:
       '472691784297-l323hbj6cm13ulsn8ul8cvvge956vedf.apps.googleusercontent.com',
 );
-const gameVersion = '1.0.1';
+const gameVersion = '1.1.0';
 const _gameBgmIntroFile = 'game_bgm_intro.ogg';
 const _gameBgmLoopFile = 'game_bgm_loop.ogg';
 // 炎SFXは単発音(82ms)を発射間隔0.14sで敷き詰めた2.24sのループ音源。

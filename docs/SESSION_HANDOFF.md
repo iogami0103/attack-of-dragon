@@ -38,6 +38,32 @@ Windows PC、Mac、Android スマホ、クラウド環境から Codex/Claude に
 
 ## ログ
 
+## 2026-08-17 Device: Mac / AI: Codex — Apple / Google 1.1.0 (4) リリース準備
+
+- Branch: `codex/release-1-1-0`
+- PR: 未作成
+- やったこと:
+  - `main` が `origin/main` と同期済みであることを確認し、Workerテスト、`flutter analyze`、`flutter test` を通過した。
+  - ローカル未コミットの `1.1.0+4` から Android本番署名AABを再生成し、versionCode `4` / versionName `1.1.0`、upload key指紋一致、SHA-256 `7191624238fb3f7a136c53f209f1b6415d3a550a11fc6a5741ef647b5912cb61` を確認した。
+  - 既存iOS IPAが bundle ID `io.github.iogami0103.attackofthedragon`、`1.1.0 (4)`、`ITSAppUsesNonExemptEncryption=false` であることを再確認した。
+  - Google Play製品版は `1.0.1 (3)` が177か国/地域で公開中。未送信変更は旧Alphaトラックの一時停止1件で、新しい製品版リリースはまだ作成していない。
+- 次のセッションへの申し送り:
+  - Google Play製品版へ `build/app/outputs/bundle/release/app-release.aab` をアップロードし、審査送信する場合は、管理対象の公開がオフのため承認後に自動公開される点を確認してから実行する。
+  - App Store Connectはブラウザ未ログイン。ログイン後、アップロード済み `1.1.0 (4)` の処理状況、バージョン1.1への紐付け、審査提出状態を確認する。
+  - `lib/main.dart`、`pubspec.yaml`、本ファイル、`docs/google_play_console_report.html`、`ios/ExportOptions.plist` は未コミット。ストア公開前後にGitHubへ再現可能な形で残す。
+
+## 2026-07-13 Device: Mac / AI: Codex — iOS 1.1.0 (4) を App Store Connect へ送信
+
+- Branch: `main`
+- PR: 未作成
+- やったこと:
+  - アプリとスコア送信時のバージョンを `1.1.0`、iOSビルド番号を `4` に更新した。
+  - `flutter analyze`、`flutter test`（38件）を通過後、署名済みiOSアーカイブを作成した。
+  - Xcode配布機能で App Store Connect へ `1.1.0 (4)` をアップロードし、`Upload succeeded` とApple側の `PROCESSING` を確認した。
+- 次のセッションへの申し送り:
+  - App Store Connect のビルド処理完了後、iOSバージョン1.1を作成してビルド `1.1.0 (4)` を選択し、審査へ提出する。現在のアプリ内ブラウザはAppleアカウントに未ログイン。
+  - Xcodeは `objective_c.framework` のdSYM不足について警告したが、IPAのアップロード自体は成功している。必要に応じて次回リリースでCocoaPods由来のdSYM設定を確認する。
+
 ## 2026-07-12 Device: Mac / AI: Claude — App Store却下対応と審査再提出
 
 - Branch: `main`（別途 `codex/google-play-remove-ads-privacy-details` でPR #5作成・マージ待ち）
